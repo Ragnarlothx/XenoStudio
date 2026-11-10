@@ -1,0 +1,10 @@
+<Window x:Class="XenoStudio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="XenoStudio" Width="1100" Height="860" MinWidth="640" MinHeight="480" Background="#1e1f22"
+        Icon="xenostudio.ico">
+    <Grid>
+        <wv2:WebView2 x:Name="web" DefaultBackgroundColor="#1e1f22" />
+    </Grid>
+</Window>

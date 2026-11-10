@@ -1,0 +1,117 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>XenoStudio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="menubar">
+    <span class="brand">XENO</span><span class="brand2">STUDIO</span>
+    <button class="mtop" id="bNew" title="New chat (Ctrl+N)">New chat</button>
+    <button class="mtop" id="bExport" title="Save this chat as markdown in the working folder">Export</button>
+    <button class="mtop" id="bFolder" title="Open the shared working folder">Folder</button>
+    <button class="mtop" id="bSettings" title="Settings">Settings</button>
+    <div class="mright">
+      <button class="pill" id="pClaude" role="switch" data-agent="claude"><i></i>Claude</button>
+      <button class="pill" id="pCodex" role="switch" data-agent="codex"><i></i>Codex</button><button class="pill" id="pDeepseek" role="switch" data-agent="deepseek"><i></i>Backup: DeepSeek</button><button class="pill" id="pGrok" role="switch" data-agent="grok"><i></i>Backup: Grok</button>
+      <button class="btn sm danger hidden" id="bStop" title="Stop (Esc)">Stop</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <aside id="side">
+      <div class="side-h">CHATS</div>
+      <input id="chatSearch" type="search" placeholder="Search chats" aria-label="Search chats"><div id="chatList"></div>
+    </aside>
+
+    <section id="center">
+      <div id="log"></div>
+      <div id="notice" class="hidden"></div>
+      <div id="composer">
+        <div id="targets">
+          <span class="muted">Send to</span>
+          <button data-t="auto" class="chip on" title="Enabled assistants, or whoever you @mention">Auto</button>
+          <button data-t="all" class="chip" title="Explicitly include backup if enabled">All + backup</button><button data-t="both" class="chip" title="Claude and Codex">Claude + Codex</button>
+          <button data-t="claude" class="chip c-claude">Claude</button>
+          <button data-t="codex" class="chip c-codex">Codex</button><button data-t="deepseek" class="chip c-deepseek">Backup: DeepSeek</button><button data-t="grok" class="chip c-grok">Backup: Grok</button>
+          <span class="grow"></span>
+          <span class="muted mono" id="cwd"></span>
+        </div>
+        <div id="attachments" class="hidden"></div>
+        <div class="row">
+          <button class="btn sec" id="bAttach" title="Attach pictures (or paste with Ctrl+V, or drag them in)">+ Picture</button>
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" multiple hidden>
+          <textarea id="input" rows="3" placeholder="Message your enabled AIs, @mention one, run !command, or paste a picture"></textarea>
+          <button class="btn" id="bSend">Send</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="modal" class="hidden">
+  <div class="dlg">
+    <div class="dlg-h">Settings <button class="x" id="bClose">✕</button></div>
+    <div class="dlg-b">
+      <label>Shared working folder
+        <div class="row"><input id="sWorkDir" class="grow mono"><button class="btn sec sm" id="bPick">Browse…</button></div>
+      </label>
+
+      <div class="grp c-claude">Claude <span class="muted">(Claude Code CLI, your Claude plan)</span></div>
+      <label>Permissions
+        <select id="sClaudeMode">
+          <option value="read">Read-only: read/search files and web</option>
+          <option value="edit">Can edit files in the working folder</option>
+          <option value="full">Full: run anything without asking</option>
+        </select>
+      </label>
+      <label>Extra folders Claude can access <span class="muted">(, or ; separated, e.g. D:\Projects,E:\Work)</span>
+        <input id="sClaudeExtraDirs" class="mono" placeholder="none">
+      </label>
+      <div class="two">
+        <label>Model <input id="sClaudeModel" placeholder="default"></label>
+        <label>claude.exe path <input id="sClaudePath" class="mono" placeholder="auto"></label>
+      </div>
+      <div class="muted mono small" id="exeClaude"></div>
+
+      <div class="grp c-codex">Codex <span class="muted">(Codex CLI, your ChatGPT plan)</span></div>
+      <label>Sandbox
+        <select id="sCodexSandbox">
+          <option value="read-only">Read-only</option>
+          <option value="workspace-write">Can edit files in the working folder</option>
+          <option value="danger-full-access">Full access</option>
+        </select>
+      </label>
+      <div class="two">
+        <label>Model <input id="sCodexModel" placeholder="default"></label>
+        <label>codex.exe path <input id="sCodexPath" class="mono" placeholder="auto"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="sCodexUseConfig"> Load my ~/.codex/config.toml (MCP servers like Windows-MCP / Desktop Commander; slower, more power)</label>
+      <div class="muted mono small" id="exeCodex"></div>
+
+      <div class="grp">Conversation</div>
+      <div class="two">
+        <label>Who answers first
+          <select id="sFirstSpeaker">
+            <option value="claude">Claude</option>
+            <option value="codex">Codex</option>
+            <option value="alternate">Alternate</option>
+          </select>
+        </label>
+        <label>Max AI replies in a row <input id="sMaxAiTurns" type="number" min="1" max="30"></label>
+      </div>
+      <label>Theme
+        <select id="sTheme"><option value="dark">Dark</option><option value="light">Light</option></select>
+      </label>
+    </div>
+    <div class="dlg-f"><button class="btn sec" id="bCancel">Cancel</button><button class="btn" id="bSave">Save</button></div>
+  </div>
+</div>
+
+<script src="md.js"></script>
+<script src="settings.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

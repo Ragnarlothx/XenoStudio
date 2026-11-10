@@ -1,0 +1,28 @@
+# build output
+bin/
+obj/
+dist/
+release/
+*.pdb
+
+# personal data: chats, settings, uploaded pictures, MCP secrets, WebView2 profile
+data/
+
+# bundled Claude Code / Codex CLIs: third-party binaries, too big for git (users install their own)
+runtime/*.exe
+
+# local update staging, backups, test harness
+_update/
+
+# private signing account details
+_dev/signing.json
+
+# not part of the app
+Bible Project*.pdf
+
+# editor / OS clutter
+.vs/
+.vscode/
+*.user
+Thumbs.db
+desktop.ini

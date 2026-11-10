@@ -1,0 +1,292 @@
+"""Builds 'XenoStudio Change Notes.pdf' (every change since the fork from XenoDuo).
+
+Run with any Python that has reportlab:  python _dev\\make_changelog.py
+"""
+import os
+import sys
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import (KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table,
+                                TableStyle)
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, "XenoStudio Change Notes.pdf")
+
+FONTS = r"C:\Windows\Fonts"
+pdfmetrics.registerFont(TTFont("Segoe", os.path.join(FONTS, "segoeui.ttf")))
+pdfmetrics.registerFont(TTFont("Segoe-Bold", os.path.join(FONTS, "segoeuib.ttf")))
+pdfmetrics.registerFont(TTFont("Mono", os.path.join(FONTS, "consola.ttf")))
+pdfmetrics.registerFontFamily("Segoe", normal="Segoe", bold="Segoe-Bold", italic="Segoe", boldItalic="Segoe-Bold")
+
+ACCENT = colors.HexColor("#4f9cf9")
+DARK = colors.HexColor("#1e1f22")
+GREY = colors.HexColor("#6d7178")
+LINE = colors.HexColor("#d9dce1")
+CLAUDE = colors.HexColor("#c15f3c")
+CODEX = colors.HexColor("#1f9d63")
+
+s_title = ParagraphStyle("t", fontName="Segoe-Bold", fontSize=26, leading=30, textColor=DARK)
+s_sub = ParagraphStyle("s", fontName="Segoe", fontSize=11, leading=15, textColor=GREY)
+s_h1 = ParagraphStyle("h1", fontName="Segoe-Bold", fontSize=17, leading=22, textColor=ACCENT, spaceBefore=14, spaceAfter=4, keepWithNext=1)
+s_h2 = ParagraphStyle("h2", fontName="Segoe-Bold", fontSize=12, leading=16, textColor=DARK, spaceBefore=10, spaceAfter=3, keepWithNext=1)
+s_body = ParagraphStyle("b", fontName="Segoe", fontSize=9.5, leading=13.5, textColor=DARK, alignment=TA_LEFT)
+s_meta = ParagraphStyle("m", parent=s_body, textColor=GREY, fontSize=9)
+s_bullet = ParagraphStyle("li", parent=s_body, leftIndent=14, bulletIndent=3, spaceAfter=2)
+s_cell = ParagraphStyle("c", parent=s_body, fontSize=8.8, leading=12)
+s_cellb = ParagraphStyle("cb", parent=s_cell, fontName="Segoe-Bold")
+
+
+def code(t):
+    return f'<font name="Mono" size="8.6">{t}</font>'
+
+
+def P(t, st=s_body):
+    return Paragraph(t, st)
+
+
+def bullets(items):
+    return [Paragraph(i, s_bullet, bulletText="•") for i in items]
+
+
+def table(rows, widths, header=True):
+    data = [[Paragraph(str(c), s_cellb if (header and r == 0) else s_cell) for c in row] for r, row in enumerate(rows)]
+    t = Table(data, colWidths=widths, repeatRows=1 if header else 0)
+    style = [
+        ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]
+    if header:
+        style.append(("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef4fe")))
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def by(who):
+    color = CLAUDE if who == "Claude" else CODEX if who == "Codex" else GREY
+    return f'<font color="#{color.hexval()[2:]}"><b>{who}</b></font>'
+
+
+def footer(canvas, doc):
+    canvas.saveState()
+    canvas.setFont("Segoe", 8)
+    canvas.setFillColor(GREY)
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.2.0")
+    canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
+    canvas.setStrokeColor(LINE)
+    canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
+    canvas.restoreState()
+
+
+W = letter[0] - 1.5 * inch
+story = []
+
+# ---------------------------------------------------------------- cover / summary
+story += [
+    P("XenoStudio", s_title),
+    P("Change Notes: every change from the fork to today", s_sub),
+    Spacer(1, 4),
+    P("Covers v1.0.0 (2026-11-01) through v1.2.0 (2026-11-09)", s_meta),
+    Spacer(1, 10),
+    P("Version summary", s_h1),
+    table([
+        ["Version", "Date", "By", "Headline"],
+        ["1.0.0", "2026-11-01", "Claude + Codex", "Forked from XenoDuo into a separate, portable app: pinned CLIs, shared MCP list, shell commands, "
+                                                   "DeepSeek/Grok backup seats, prompt templates, much larger settings."],
+        ["1.1.0", "2026-11-09", "Claude", "Fixed Codex crashing (\"The pipe is being closed\"), multiple working folders (two drives), "
+                                          "picture attachments, updated bundled Claude Code and Codex CLIs, text-encoding fixes."],
+        ["1.2.0", "2026-11-09", "Claude + Codex", "Single instance (no duplicate windows), automatic repair of stale MCP paths, "
+                                                  "crash-proof turns, retry once by default, remembered window position, crash log, "
+                                                  "drag-and-drop overlay and fixes."],
+    ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
+    Spacer(1, 8),
+    P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
+      "while Codex was down. " + by("Codex") + " owns the web UI (web\\) and did the 1.2.0 drag-and-drop work.", s_meta),
+]
+
+# ---------------------------------------------------------------- 1.0.0
+story += [
+    P("v1.0.0: the fork from XenoDuo · 2026-11-01", s_h1),
+    P("XenoStudio was created as a copy of XenoDuo so new ideas could be tried without touching the stable app. "
+      "XenoDuo itself was never edited. Everything below is what 1.0.0 added on top of XenoDuo."),
+    P("Portable layout", s_h2),
+    *bullets([
+        "Everything lives next to the exe: " + code("runtime\\") + " (pinned " + code("claude.exe") + " and " + code("codex.exe") + "), "
+        + code("data\\settings.json") + ", " + code("data\\chats\\") + ", " + code("data\\profiles\\claude-settings.json") + ".",
+        "Pinned CLIs are never auto-updated; Settings → \"Update bundled CLIs\" copies installed versions in only when you choose.",
+        "First run copies XenoDuo's settings as a starting point (read-only; XenoDuo's own files are untouched).",
+        "Packaging script " + code("_dev\\package.ps1") + " builds a shareable zip (with or without the CLIs) and never includes " + code("data\\") + ".",
+        "Command line: " + code("XenoStudio.exe --send \"message\"") + " starts a new chat with that message.",
+    ]),
+    P("MCP servers", s_h2),
+    *bullets([
+        "One shared server list (stdio or http/sse), each switchable on/off and per AI (Claude and/or Codex).",
+        "Claude gets them through a generated " + code("data\\mcp-claude.json") + " (" + code("--mcp-config") + "), with optional "
+        "\"strict\" mode and auto-allow of the servers' tools.",
+        "Codex gets them as " + code("-c mcp_servers.&lt;name&gt;.*") + " overrides, so they work with or without " + code("~/.codex/config.toml") + ".",
+        "\"Import\" pulls servers from " + code("~/.claude.json") + " and " + code("~/.codex/config.toml") + ".",
+    ]),
+    P("Chat", s_h2),
+    *bullets([
+        code("!command") + " runs a shell command (PowerShell, pwsh or cmd) in the working folder; output is shared with the AIs unless turned off.",
+        code("@claude") + " / " + code("@codex") + " / " + code("@both") + " addressing, and AI-to-AI hand-off by @mention.",
+        "DeepSeek and Grok backup seats over any OpenAI-compatible API (also local Ollama / LM Studio), with optional automatic "
+        "fallback when Claude or Codex fails.",
+        "Editable prompt template and footer with {placeholders}, plus a preview of exactly what each AI receives.",
+        "Lost-session recovery: if a CLI session disappears, a fresh one starts with the recent history.",
+    ]),
+    P("Settings added versus XenoDuo", s_h2),
+    *bullets([
+        "<b>General:</b> your name, extra instructions for both AIs, turn time limit, auto-export, shell on/off and which shell.",
+        "<b>Claude:</b> on/off, bundled vs installed exe, model, fallback model, max agent steps, allowed/blocked tools, extra folders, "
+        "own instructions, extra CLI args, environment variables, strict MCP, auto-allow MCP.",
+        "<b>Codex:</b> on/off, bundled vs installed exe, model, reasoning effort, sandbox, load config.toml, own instructions, "
+        "extra CLI args, environment variables.",
+        "UI preferences (font size, accent, density, timestamps…) stored in " + code("settings.ui") + ".",
+    ]),
+    PageBreak(),
+]
+
+# ---------------------------------------------------------------- 1.1.0
+story += [
+    P("v1.1.0 · 2026-11-09 · " + by("Claude"), s_h1),
+    P("Bug fixes", s_h2),
+    table([
+        ["Problem", "Cause", "Fix"],
+        ["Codex failed every turn with \"The pipe is being closed\".",
+         "The working folder was set to " + code("D:\\,E:\\") + ". It was passed to Codex as one folder path (" + code("-C \"D:\\,E:\\\"") + "), "
+         "which Windows rejects (os error 123). Codex quit instantly, and XenoStudio crashed writing to it.",
+         "Working folders are now a list (see New features). Reproduced and verified with the real CLI."],
+        ["Real CLI errors were hidden.",
+         "When a CLI exited before reading its input, the write threw \"The pipe is being closed\" and masked the CLI's own message.",
+         "That write error is now ignored, so the CLI's actual error is shown."],
+        ["Claude's extra folders were silently ignored.",
+         "That setting only understood " + code(";") + ". " + code("D:\\,E:\\") + " was treated as one non-existent folder.",
+         "Accepts " + code(",") + ", " + code(";") + " or " + code("|") + "."],
+        ["Garbled characters in the UI (âœ•, Browseâ€¦, \"Version 1.0 ? Data\").",
+         "Text-encoding damage in " + code("index.html") + " and " + code("app.js") + ".",
+         "Restored ×, Browse… and the · separator."],
+    ], [1.6 * inch, 2.6 * inch, W - 4.2 * inch]),
+    P("New: multiple working folders", s_h2),
+    *bullets([
+        "The shared working folder can list several folders: " + code("D:\\,E:\\") + ". The first existing one is where the AIs start; "
+        "the rest are added with " + code("--add-dir") + " for both Claude and Codex.",
+        "Shell commands, export, the Folder button and settings export use the first folder.",
+        "Settings → General: \"Add working folder…\" now <b>adds</b> the picked folder to the list instead of replacing it; "
+        "\"Clear folders\" empties it.",
+    ]),
+    P("New: picture attachments", s_h2),
+    *bullets([
+        "Attach by pasting (Ctrl+V, including Win+Shift+S screenshots), dragging files onto the window, or the <b>+ Picture</b> button.",
+        "Thumbnails above the message box with × to remove; pictures can be sent with or without text.",
+        "Pictures show in the chat; click one to open it full size.",
+        "Stored in " + code("data\\uploads\\&lt;chat&gt;\\") + " and deleted together with the chat. PNG, JPG, GIF, WebP, BMP; max 20 MB each.",
+        "<b>Codex</b> receives the actual image (" + code("-i") + "; tested: it correctly answered \"Red\" for a red test square). "
+        "<b>Claude</b> gets the file path and opens it with its Read tool. DeepSeek/Grok get the path only (no file access).",
+        "Markdown export includes the pictures.",
+    ]),
+    P("Updates", s_h2),
+    table([
+        ["Component", "Before", "After", "Notes"],
+        ["Claude Code (bundled)", "2.1.312", "2.1.321", "Official npm package, signature verified: Anthropic, PBC."],
+        ["Codex CLI (bundled)", "0.166.0-alpha.5.1", "0.167.0-alpha.3.2", "Copied with its helper exes from the installed Codex app."],
+        ["XenoStudio", "1.0.0", "1.1.0", ""],
+    ], [1.5 * inch, 1.2 * inch, 1.2 * inch, W - 3.9 * inch]),
+    P("Tooling", s_h2),
+    *bullets([
+        code("_update\\apply-update.ps1") + ": installs a new build after XenoStudio closes (the app can't replace itself while running), "
+        "backs up the old app files, keeps " + code("data\\") + " untouched, then reopens the app.",
+        "Old CLIs kept in " + code("_update\\old-runtime\\") + ".",
+    ]),
+]
+
+# ---------------------------------------------------------------- 1.2.0
+story += [
+    P("v1.2.0 · 2026-11-09 · " + by("Claude") + " + " + by("Codex"), s_h1),
+    P("A full backup of the app as it was (1.1.0, including source, build, chats and settings) was made first: "
+      + code("Backups\\XenoStudio-v1.1.0-20261109-175842") + " (1.9 GB).", s_meta),
+    P("Changes by " + by("Claude"), s_h2),
+    table([
+        ["#", "Change", "Details", "Verified"],
+        ["1", "Only one XenoStudio at a time",
+         "Launching the exe again brings the open window to the front instead of opening a second app. "
+         + code("--send \"…\"") + " from a second launch is handed to the open window. Per install folder, so XenoDuo or a test copy can still run.",
+         "Yes: second launch exited, one window"],
+        ["2", "Stale MCP paths repaired automatically",
+         "The node_repl server pointed at a Codex install removed by a Codex app update. At startup, any server whose command or "
+         "environment paths no longer exist is re-read from the Codex/Claude config, keeping your on/off choices. A notice says which.",
+         "Yes: refreshed to the current install"],
+        ["3", "One AI crashing doesn't stop the others",
+         "A crash inside a turn used to end the whole queue with a system error. It now becomes that AI's turn error, so retry, "
+         "backup fallback and the next AI still run.",
+         "Builds; only triggers on a real crash"],
+        ["4", "Retry once by default",
+         "Retry on error changed from 0 to 1 (5 s delay) to catch network blips and brief overloads. Applied once to existing "
+         "settings through a new settings-version upgrade; still adjustable in Settings.",
+         "Yes"],
+        ["5", "Window position and size remembered",
+         "Saved to " + code("data\\window.json") + " on close, including maximized. Falls back to the default if that screen is gone.",
+         "Yes"],
+        ["6", "Crash log",
+         "Unexpected errors are written to " + code("data\\crash.log") + " (capped at 1 MB) with a popup, instead of the app silently dying.",
+         "Builds; only triggers on a real crash"],
+        ["7", "Version in the title bar", "\"XenoStudio 1.2.0\".", "Yes"],
+        ["8", "Build cleanup", "Test files in " + code("_update\\") + " are excluded from compilation.", "Yes"],
+    ], [0.25 * inch, 1.45 * inch, W - 3.25 * inch, 1.55 * inch]),
+    P("Changes by " + by("Codex") + ": drag-and-drop", s_h2),
+    *bullets([
+        "Full-window drop overlay: \"Drop pictures to attach to your message\".",
+        "Pictures whose Windows file type comes through blank are recognized by their extension (.png, .jpg, .jpeg, .gif, .webp, .bmp).",
+        "A message appears if a picture can't be read.",
+        "Drop cursor shows \"copy\"; the overlay clears if the drag leaves the window or is cancelled; the message box gets focus after a drop.",
+        "Codex checked dropped images, unsupported files and the 20 MB limit. Live dragging from the desktop has not been verified yet.",
+    ]),
+]
+
+# ---------------------------------------------------------------- files, backups, open items
+story += [
+    P("Files changed", s_h1),
+    table([
+        ["File", "Version", "What changed"],
+        [code("Settings.cs"), "1.1.0, 1.2.0", "Folder lists (PrimaryWorkDir, ExtraDirs), uploads path, stale-MCP refresh, settings version upgrade, retry default."],
+        [code("Agents.cs"), "1.1.0", "Pipe-error fix, folder lists for both CLIs, pictures passed to the CLIs."],
+        [code("MainWindow.xaml.cs"), "1.1.0, 1.2.0", "Picture save/serve/prompt/export, folder lists everywhere, second-launch hand-off, window bounds, crash-proof turns, title."],
+        [code("App.xaml / App.xaml.cs"), "1.2.0", "Single-instance mutex + named pipe, crash log, app now opens the window itself."],
+        [code("XenoStudio.csproj"), "1.1.0, 1.2.0", "Version numbers; " + code("_update\\") + " excluded from compile."],
+        [code("web\\app.js"), "1.1.0, 1.2.0", "Picture paste/drop/attach, thumbnails, encoding fix (Claude); drop overlay and file-type fixes (Codex)."],
+        [code("web\\index.html"), "1.1.0", "+ Picture button, attachment strip, encoding fixes, folder hints."],
+        [code("web\\style.css"), "1.1.0, 1.2.0", "Attachment and thumbnail styles (Claude); drop overlay (Codex)."],
+        [code("web\\settings.js"), "1.1.0", "Multi-folder labels, Add working folder…, Clear folders."],
+        [code("runtime\\*.exe"), "1.1.0", "Claude Code 2.1.321, Codex 0.167.0-alpha.3.2 and helpers."],
+    ], [1.6 * inch, 0.95 * inch, W - 2.55 * inch]),
+    P("Backups and how to roll back", s_h1),
+    table([
+        ["Backup", "Contains"],
+        [code("Backups\\XenoStudio-v1.1.0-20261109-175842"), "Whole app at 1.1.0: source, build, runtime, chats, settings."],
+        [code("_update\\old-dist-20261109-175448"), "App files of 1.0.0, replaced by the 1.1.0 install."],
+        [code("_update\\old-dist-20261109-180615"), "App files of 1.1.0, replaced by the 1.2.0 install."],
+        [code("_update\\old-runtime\\"), "Claude Code 2.1.312 and Codex 0.166 executables."],
+        [code("_update\\apply-update.log"), "Log of each install."],
+    ], [3.1 * inch, W - 3.1 * inch]),
+    Spacer(1, 4),
+    P("To roll back: close XenoStudio and copy a backup's files over " + code("dist\\") + " (leave " + code("dist\\data\\") + " in place)."),
+    P("Not yet verified", s_h1),
+    *bullets([
+        "Dragging a picture from the desktop into the running app (Codex's note).",
+        "Clicking through the picture UI inside the app by hand: the code paths were tested outside the app.",
+        "The crash log and crash-proof turns: they only run when something actually crashes.",
+    ]),
+]
+
+doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
+                        topMargin=0.75 * inch, bottomMargin=0.85 * inch,
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.2.0", invariant=1)
+doc.build(story, onFirstPage=footer, onLaterPages=footer)
+print(OUT)

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>XenoStudio</AssemblyName>
+    <RootNamespace>XenoStudio</RootNamespace>
+    <Company>Xeno</Company>
+    <Authors>Xeno</Authors>
+    <Product>XenoStudio</Product>
+    <Version>1.2.0</Version>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NoWarn>CA1416</NoWarn>
+    <ApplicationIcon>xenostudio.ico</ApplicationIcon>
+    <!-- keep this PC's folder paths out of the exe and .pdb -->
+    <PathMap>$(MSBuildProjectDirectory)=XenoStudio</PathMap>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="xenostudio.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="dist\**;bin\**;obj\**;release\**;runtime\**;_update\**" />
+    <Content Include="web\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- pinned Claude Code + Codex CLIs ship inside the app folder -->
+    <None Include="runtime\*.exe" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
