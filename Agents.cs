@@ -401,6 +401,17 @@ namespace XenoStudio
             catch { }
             foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 try { var c = Path.Combine(dir, "codex.exe"); if (File.Exists(c)) return c; } catch { }
+            // npm install -g @openai/codex: the real exe sits inside the package (PATH only has a codex.cmd shim)
+            try
+            {
+                var pkg = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm", "node_modules", "@openai", "codex");
+                if (Directory.Exists(pkg))
+                {
+                    var exe = new DirectoryInfo(pkg).GetFiles("codex.exe", SearchOption.AllDirectories).OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
+                    if (exe != null) return exe.FullName;
+                }
+            }
+            catch { }
             return null;
         }
 

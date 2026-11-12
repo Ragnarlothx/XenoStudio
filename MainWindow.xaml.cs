@@ -176,6 +176,7 @@ namespace XenoStudio
                                 promptDefaults = new { template = DefaultPromptTemplate, footer = DefaultPromptFooter, placeholders = PromptPlaceholders } });
                     PostStatus();
                     _ = PostRuntime();
+                    _ = SetupCheckOnStart();
                     webReady = true;
                     if (mcpRefreshed.Count > 0) Notice("Updated MCP servers whose paths had gone stale: " + string.Join(", ", mcpRefreshed));
                     // XenoStudio.exe --send "message"  → starts a new chat with that message (scripting / shortcuts)
@@ -216,6 +217,14 @@ namespace XenoStudio
                 case "saveFile":
                     Reply(n, "savedFile", () => SaveUserEdit((string)n["path"] ?? "", (string)n["text"] ?? ""));
                     break;
+                // ---- first-run setup (Setup.cs): checklist, installs, sign-ins, MCP catalog
+                case "setupScan": _ = ReplyAsync(n, "setupScan", async () => new { items = await Setup.Scan(S, Exe("claude"), Exe("codex")), setupDone = S.SetupDone, winget = Setup.HasWinget }); break;
+                case "setupInstall": _ = SetupInstall(n); break;
+                case "setupLogin": _ = SetupLogin(n); break;
+                case "setupApiKey": _ = SetupApiKey(n); break;
+                case "setupDone": S.SetupDone = true; SaveSettings(); Post(new { type = "settings", settings = S, exe = ExeInfo() }); break;
+                case "mcpCatalog": Reply(n, "mcpCatalog", () => new { servers = Setup.Catalog(S), node = Setup.Which("npx") != null, uv = Setup.Which("uvx") != null }); break;
+                case "mcpInstall": _ = McpInstall(n); break;
                 case "watchFile": Watch((string)n["path"], true); break;
                 case "unwatchFile": Watch((string)n["path"], false); break;
                 case "openImage":
@@ -374,6 +383,131 @@ namespace XenoStudio
             catch (Exception ex) { Post(new { type, rid, ok = false, error = ex.Message }); }
         }
 
+        async Task ReplyAsync(JsonNode n, string type, Func<Task<object>> work)
+        {
+            var rid = (string)n["rid"];
+            try { Post(new { type, rid, ok = true, data = await work() }); }
+            catch (Exception ex) { Post(new { type, rid, ok = false, error = ex.Message }); }
+        }
+
+        // ---------------------------------------------------------------- setup
+        string Exe(string id) => agents[id].ResolveExe(S);
+        Task<SetupItem> ScanOne(string id) => Setup.ScanOne(id, S, Exe("claude"), Exe("codex"));
+        bool setupBusy;
+
+        /// <summary>On start: if a CLI or sign-in the enabled AIs need is missing, ask the page to open the setup wizard.</summary>
+        async Task SetupCheckOnStart()
+        {
+            try
+            {
+                var items = await Setup.Scan(S, Exe("claude"), Exe("codex"));
+                if (items.Any(i => i.Required && !i.Ok)) Post(new { type = "setupNeeded", items, firstRun = !S.SetupDone });
+                else if (!S.SetupDone) await Dispatcher.InvokeAsync(() => { S.SetupDone = true; SaveSettings(); });
+            }
+            catch (Exception ex) { CrashLog.Write("setup-scan", ex); }
+        }
+
+        /// <summary>{ id } or { ids:[…] }. One native confirm lists everything (including prerequisites) before anything runs.</summary>
+        async Task SetupInstall(JsonNode n)
+        {
+            var rid = (string)n["rid"];
+            var ids = (n["ids"] as JsonArray)?.Select(x => (string)x).ToList() ?? new List<string> { (string)n["id"] };
+            if (setupBusy) { Post(new { type = "setupInstall", rid, ok = false, error = "Another install is still running." }); return; }
+            // prerequisites first, each once, in a sensible order
+            var order = new[] { "node", "git", "uv", "claude", "codex" };
+            var steps = ids.SelectMany(i => Setup.Plan(i).needsFirst.Append(i)).Where(i => Setup.Plan(i).what != null)
+                           .Distinct().OrderBy(i => Array.IndexOf(order, i)).ToList();
+            if (steps.Count == 0) { Post(new { type = "setupInstall", rid, ok = false, error = "Nothing to install." }); return; }
+
+            var text = "XenoStudio will install:\n\n" + string.Join("\n", steps.Select(i => "•  " + Setup.Plan(i).what)) +
+                       "\n\nThe downloads come from the official sources. Windows may ask for permission (UAC).\n\nContinue?";
+            if (MessageBox.Show(this, text, "XenoStudio setup", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            { Post(new { type = "setupInstall", rid, ok = false, cancelled = true }); return; }
+
+            setupBusy = true;
+            try
+            {
+                foreach (var id in steps)
+                {
+                    Post(new { type = "setupLog", id, line = $"Installing {id}…" });
+                    var ok = await Setup.Install(id, line => Post(new { type = "setupLog", id, line }));
+                    if (!ok && id == "node" && steps.Contains("codex"))
+                    {   // codex needs npm; check whether node is usable anyway (winget says non-zero when it's already there)
+                        Setup.RefreshPath();
+                        if (Setup.Which("npm") == null) { Post(new { type = "setupLog", id = "codex", line = "Skipping Codex: Node.js isn't available yet." }); steps.Remove("codex"); }
+                    }
+                }
+                var rescan = steps.Concat(steps.Where(i => i is "claude" or "codex").Select(i => i + "-login")).Distinct();
+                var items = new List<SetupItem>();
+                foreach (var id in rescan) items.Add(await ScanOne(id));
+                Post(new { type = "setupInstall", rid, ok = true, data = new { items } });
+                Post(new { type = "settings", settings = S, exe = ExeInfo() });
+                _ = PostRuntime();
+            }
+            catch (Exception ex) { Post(new { type = "setupInstall", rid, ok = false, error = ex.Message }); }
+            finally { setupBusy = false; }
+        }
+
+        /// <summary>{ id: "claude" | "codex" } — opens the CLI's own browser sign-in in a console window; replies when it closes.</summary>
+        async Task SetupLogin(JsonNode n)
+        {
+            var id = (string)n["id"];
+            await ReplyAsync(n, "setupLogin", async () =>
+            {
+                if (id is not ("claude" or "codex")) throw new Exception("unknown sign-in " + id);
+                var exe = Exe(id);
+                if (!Path.IsPathRooted(exe) || !File.Exists(exe)) throw new Exception($"Install the {(id == "claude" ? "Claude Code" : "Codex")} CLI first.");
+                await Setup.Login(id, exe);
+                return new { item = await ScanOne(id + "-login") };
+            });
+        }
+
+        /// <summary>{ id: "claude" | "codex", key } — API key instead of an account sign-in. The key is never logged or echoed back.</summary>
+        async Task SetupApiKey(JsonNode n)
+        {
+            var id = (string)n["id"]; var key = ((string)n["key"] ?? "").Trim();
+            await ReplyAsync(n, "setupApiKey", async () =>
+            {
+                if (key.Length < 20 || key.Any(char.IsWhiteSpace)) throw new Exception("That doesn't look like an API key.");
+                if (id == "claude")
+                {
+                    S.ClaudeEnv = Setup.SetEnvLine(S.ClaudeEnv, "ANTHROPIC_API_KEY", key);
+                    SaveSettings();
+                    Post(new { type = "settings", settings = S, exe = ExeInfo() });
+                }
+                else if (id == "codex")
+                {
+                    var exe = Exe("codex");
+                    if (!Path.IsPathRooted(exe) || !File.Exists(exe)) throw new Exception("Install the Codex CLI first.");
+                    await Setup.SaveCodexKey(exe, key);
+                }
+                else throw new Exception("unknown sign-in " + id);
+                return new { item = await ScanOne(id + "-login") };
+            });
+        }
+
+        /// <summary>{ id } from the catalog — test-starts the server (downloads it the first time), then adds or re-enables it.</summary>
+        async Task McpInstall(JsonNode n)
+        {
+            var id = (string)n["id"];
+            await ReplyAsync(n, "mcpInstall", async () =>
+            {
+                Setup.RefreshPath();
+                var entry = Setup.Catalog(S).FirstOrDefault(e => e.Id == id) ?? throw new Exception("unknown MCP server " + id);
+                if (entry.Needs == "node" && Setup.Which("npx") == null) throw new Exception("Needs Node.js. Install it in the setup checklist first.");
+                if (entry.Needs == "uv" && Setup.Which("uvx") == null) throw new Exception("Needs uv. Install it in the setup checklist first.");
+                var m = entry.Make();
+                var tools = await Setup.TestMcp(m, line => Post(new { type = "setupLog", id = "mcp:" + id, line }));
+                S.McpServers ??= new();
+                var old = S.McpServers.FirstOrDefault(x => x.Name.Equals(m.Name, StringComparison.OrdinalIgnoreCase));
+                if (old != null) { m.Claude = old.Claude; m.Codex = old.Codex; S.McpServers[S.McpServers.IndexOf(old)] = m; }
+                else S.McpServers.Add(m);
+                SaveSettings();
+                Post(new { type = "settings", settings = S, exe = ExeInfo() });
+                return new { tools, servers = Setup.Catalog(S) };
+            });
+        }
+
         static void OpenUrl(string url)
         {
             if (url != null && (url.StartsWith("https://") || url.StartsWith("http://")))
@@ -462,6 +596,9 @@ namespace XenoStudio
                 var path = Path.Combine(S.PrimaryWorkDir, "XenoStudio-settings.json");
                 var copy = JsonSerializer.SerializeToNode(S, J);
                 copy["deepSeekApiKey"] = ""; copy["grokApiKey"] = "";   // never export API keys
+                foreach (var envKey in new[] { "claudeEnv", "codexEnv" })    // nor keys/tokens set as environment lines (setup's API-key option)
+                    copy[envKey] = string.Join("\n", ((string)copy[envKey] ?? "").Replace("\r", "").Split('\n')
+                        .Where(l => !Regex.IsMatch(l.Split('=')[0], "KEY|TOKEN|SECRET|PASSWORD", RegexOptions.IgnoreCase)));
                 File.WriteAllText(path, copy.ToJsonString(J), new UTF8Encoding(false));
                 Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
                 Notice("Settings exported to " + path + " (check MCP env/headers for secrets before sharing)");

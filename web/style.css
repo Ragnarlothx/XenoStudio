@@ -289,3 +289,16 @@ body.compact .m .body { padding:7px 10px; }
 .editingFile { color:var(--fg2); font:11px var(--mono); padding:6px 0; overflow-wrap:anywhere; }
 .editingFile.active::before { content:'● '; color:var(--accent); animation:pulse 1s infinite; }
 body.reduce-motion .editingFile.active::before { animation:none; }
+#setupWizard { width:min(840px,94vw); max-height:90vh; overflow:auto; color:var(--fg); background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:0 24px 90px #0008; }
+#setupWizard::backdrop { background:#0009; }
+#setupWizard header, #setupWizard footer { display:flex; align-items:center; gap:12px; }
+#setupWizard header h2 { flex:1; margin:0; }
+#setupSteps { display:flex; gap:8px; flex-wrap:wrap; margin:20px 0; }
+#setupSteps [aria-current="step"] { outline:1px solid var(--accent); color:var(--accent); }
+#setupContent { min-height:240px; }
+.setupItem { border:1px solid var(--border); border-radius:6px; background:var(--panel); padding:12px; margin:10px 0; }
+.setupItem p { margin:6px 0; overflow-wrap:anywhere; }
+.setupItem small { display:block; margin-bottom:8px; color:var(--fg2); }
+#setupLog { white-space:pre-wrap; overflow-wrap:anywhere; max-height:160px; overflow:auto; background:var(--code); padding:12px; font:11px/1.6 var(--mono); user-select:text; }
+#setupStatus { min-height:20px; color:var(--warn); overflow-wrap:anywhere; }
+#setupWizard footer { margin-top:16px; flex-wrap:wrap; }

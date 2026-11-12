@@ -103,16 +103,22 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 
 ## Install and run
 
-1. Windows 10/11 x64 with the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) and WebView2 (built into Windows 11).
-2. Sign in once to each CLI: `runtime\claude.exe` (then `/login`) and `runtime\codex.exe login`.
-3. Run `XenoStudio.exe`. Open **Settings** to pick your work folder(s), permissions and theme.
+1. Windows 10/11 x64. Download the zip from **Releases**, unzip anywhere, run `XenoStudio.exe`. .NET is included; WebView2 is built into Windows 11.
+2. The **setup wizard** opens on first launch if anything is missing:
+   - **Tools and AIs**: checks Node.js, Git, uv, the Claude Code CLI and the Codex CLI, and installs what's missing (official sources, after a Yes/No prompt).
+   - **Sign in**: uses the sign-ins already on your PC. If you aren't signed in, **Sign in** opens Claude's or Codex's own browser login.
+   - **MCP servers** (optional): Desktop Commander, Windows-MCP, Playwright, Fetch; each is tested before it's added.
+   Reopen it any time from **Settings**.
+3. Open **Settings** to pick your work folder(s), permissions and theme.
+
+No accounts, keys or sign-ins ship with XenoStudio. Everyone uses their own Claude and ChatGPT accounts.
 
 ### Build
 ```
 dotnet build -c Release -o dist
-powershell -ExecutionPolicy Bypass -File _dev\package.ps1 [-NoRuntime]   # zip into release\
+powershell -ExecutionPolicy Bypass -File _dev\package.ps1 -NoRuntime   # self-contained zip into release\
 ```
-The bundled CLIs (`runtime\*.exe`) aren't in this repo; put `claude.exe` and `codex.exe` there, or point Settings at installed copies.
+The bundled CLIs (`runtime\*.exe`) aren't in this repo. Without them XenoStudio uses installed copies, and the setup wizard installs them if needed.
 
 ---
 
@@ -130,6 +136,7 @@ pictures and snapshots.
 | `MainWindow.xaml.cs` | Bridge to the UI, turn-taking, prompts, shell, persistence |
 | `EditTracker.cs` | Snapshots and diffs of files the AIs change |
 | `CodePreview.cs` | Workspace file access, Save as, Open in XenoEdit |
+| `Setup.cs` | Setup wizard backend: tool/CLI/sign-in checks, prompted installs, MCP catalog |
 | `Settings.cs` | Settings model, paths, MCP and work-folder helpers |
 | `ThemeChrome.cs`, `App.xaml.cs` | Title bar colors, single instance, crash log |
 | `web/` | The UI (`app.js` chat, `preview.js` workspace, `settings.js`, `style.css`), Monaco in `web/lib/vs` |

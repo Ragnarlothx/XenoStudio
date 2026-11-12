@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.4.0")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.0")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.4.0 (2026-11-11)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.0 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -109,6 +109,8 @@ story += [
         ["1.4.0", "2026-11-11", "Claude + Codex", "Code workspace with the Monaco editor (from XenoEdit), code tiles, change cards and "
                                                   "before/after diffs of every AI edit, live reload, Open in XenoEdit, safer updater, "
                                                   "README with demo, private GitHub repo and release."],
+        ["1.5.0", "2026-11-12", "Claude + Codex", "Setup wizard: finds each user's own Claude/Codex sign-ins, offers browser sign-in, "
+                                                  "installs missing tools after a prompt, one-click tested MCP servers; .NET included in the download."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -341,6 +343,60 @@ story += [
     ]),
 ]
 
+
+# ---------------------------------------------------------------- 1.5.0
+story += [
+    PageBreak(),
+    P("v1.5.0 · 2026-11-12 · " + by("Claude") + " + " + by("Codex"), s_h1),
+    P("Goal: someone who downloads XenoStudio can get it running without help, using their own accounts. "
+      "No credentials, sign-ins or settings of anyone else ship with the app.", s_meta),
+    P("Setup wizard (UI by " + by("Codex") + ", backend by " + by("Claude") + ": " + code("Setup.cs") + ")", s_h2),
+    *bullets([
+        "Opens by itself on start when a CLI or sign-in that an enabled AI needs is missing; reopen any time from Settings. "
+        "If everything is already in place, it never appears.",
+        "<b>1 · Tools and AIs:</b> checks Node.js, Git for Windows, uv, the Claude Code CLI and the Codex CLI, with "
+        "<b>Install</b> per item and <b>Install everything missing</b>.",
+        "<b>2 · Sign in:</b> existing sign-ins are found by asking each CLI (" + code("claude auth status") + ", "
+        + code("codex login status") + "), e.g. \"Signed in with a Claude account\", \"Signed in with ChatGPT\". "
+        "If not signed in, <b>Sign in</b> opens the CLI's own login window, which opens the browser.",
+        "<b>3 · MCP servers:</b> Desktop Commander, Windows-MCP, Playwright browser and Fetch. <b>Add</b> downloads the server, "
+        "test-starts it with a real MCP handshake, and only then adds it. Import from Claude/Codex configs is there too.",
+        "<b>4 · Ready:</b> lists anything still missing.",
+        "Other AI seats (DeepSeek, Grok, local models) and their settings are left exactly as they were.",
+    ]),
+    P("Installs only after you agree", s_h2),
+    table([
+        ["Item", "Installed with", "Needs"],
+        ["Node.js LTS", "winget " + code("OpenJS.NodeJS.LTS"), ""],
+        ["Git for Windows", "winget " + code("Git.Git"), ""],
+        ["uv", "winget " + code("astral-sh.uv"), ""],
+        ["Claude Code CLI", "Anthropic's official installer (" + code("claude.ai/install.ps1") + ")", ""],
+        ["Codex CLI", "npm " + code("@openai/codex"), "Node.js (added to the same prompt automatically)"],
+    ], [1.4 * inch, 3.2 * inch, W - 4.6 * inch]),
+    *bullets([
+        "Every install shows a Windows Yes/No prompt listing everything that will be installed; Windows may also ask for permission (UAC).",
+        "Without winget, the item offers <b>Get installer</b> (the official download page) instead.",
+        "Progress streams into <i>Installation activity</i>; newly installed tools are found without restarting the app.",
+        "Codex installed through npm is now found automatically.",
+    ]),
+    P("Packaging and privacy", s_h2),
+    *bullets([
+        "The download is now <b>self-contained</b>: .NET is included, so nothing needs installing before the first launch (65 MB zip).",
+        "The zip has no " + code("data\\") + " folder (no chats, settings, MCP list or WebView2 profile) and no CLI executables or sign-in files. "
+        "Each user signs in with their own Claude and ChatGPT accounts; sign-ins stay in their own " + code("~/.claude") + " and "
+        + code("~/.codex") + ".",
+        "Before release the zip was scanned for credential files, API keys, tokens, names, email, address and local paths: none found.",
+        "API keys or tokens set as environment lines are now removed from settings exports.",
+    ]),
+    P("Verified", s_h2),
+    *bullets([
+        "Sign-in detection for both CLIs; missing-CLI detection on a copy without bundled CLIs.",
+        "All four catalog MCP servers start and answer: Desktop Commander 25 tools, Windows-MCP 20, Playwright 25, Fetch 1.",
+        "A fresh copy of the packaged app opens the wizard on its own and lists the missing items.",
+        "Not run on this PC: the installers themselves (they would install a second copy of the CLIs).",
+    ]),
+]
+
 # ---------------------------------------------------------------- files, backups, open items
 story += [
     P("Files changed", s_h1),
@@ -367,6 +423,9 @@ story += [
         [code("web\\style.css") + ", " + code("web\\settings.js"), "1.3.0, 1.4.0", "Cyberpunk / Hacker themes, workspace styles, XenoEdit path field (Codex)."],
         [code("_update\\apply-update.ps1"), "1.4.0", "Retry loop when files are locked."],
         [code("README.md") + ", " + code("docs\\screenshots\\"), "1.4.0", "New guide with demo and screenshots."],
+        [code("Setup.cs"), "1.5.0", "New: setup checks, installs, sign-in, MCP catalog and handshake test."],
+        [code("web\\setup.js"), "1.5.0", "New (Codex): the setup wizard."],
+        [code("_dev\\package.ps1"), "1.5.0", "Self-contained package by default; CLIs optional."],
     ], [1.6 * inch, 0.95 * inch, W - 2.55 * inch]),
     P("Backups and how to roll back", s_h1),
     table([
@@ -393,6 +452,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.4.0", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.0", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)

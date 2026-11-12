@@ -185,6 +185,7 @@ namespace XenoStudio
         }
 
         // ---- one-time upgrades of saved settings when a newer XenoStudio first opens them
+        public bool SetupDone { get; set; } = false;    // first-run setup finished (or everything was already in place)
         public int SettingsVersion { get; set; } = 0;   // 0 = saved by 1.1.0 or older (the field didn't exist)
 
         public void Clamp()

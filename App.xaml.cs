@@ -25,6 +25,28 @@ namespace XenoStudio
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // XenoStudio.exe --setup-selftest out.json [mcpId…]: runs the setup scan (and test-starts the named catalog MCP servers),
+            // writes the result and exits. Read-only: installs nothing, opens no window.
+            int st = Array.IndexOf(e.Args, "--setup-selftest");
+            if (st >= 0 && st + 1 < e.Args.Length)
+            {
+                var outFile = e.Args[st + 1];
+                var mcpIds = e.Args.Skip(st + 2).ToList();
+                var result = Task.Run(async () =>
+                {
+                    var s = new Settings();
+                    var items = await Setup.Scan(s, new ClaudeAgent().ResolveExe(s), new CodexAgent().ResolveExe(s));
+                    var mcp = new System.Collections.Generic.List<object>();
+                    foreach (var c in Setup.Catalog(s).Where(c => mcpIds.Contains(c.Id)))
+                        try { mcp.Add(new { c.Id, tools = await Setup.TestMcp(c.Make(), _ => { }) }); }
+                        catch (Exception ex) { mcp.Add(new { c.Id, error = ex.Message }); }
+                    return new { items, mcp, winget = Setup.HasWinget };
+                }).GetAwaiter().GetResult();
+                File.WriteAllText(outFile, JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+                Shutdown();
+                return;
+            }
+
             single = new Mutex(true, @"Local\" + Key, out bool first);
             if (!first)
             {
