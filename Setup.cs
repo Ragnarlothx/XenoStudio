@@ -219,6 +219,14 @@ namespace XenoStudio
             }
             it.Status = it.Ok ? "ok" : "missing";
             if (!it.Ok) { it.Actions.Add("login"); it.Actions.Add("apikey"); }
+            // "Skip": the user says this account is already signed in some other way; trust them and stop asking
+            if (!it.Ok && (s.SkipLogin ?? new()).Contains(id))
+            {
+                it.Ok = true; it.Status = "skipped";
+                it.Detail = "Skipped: you said this account is already signed in";
+                it.Actions = new() { "login", "unskip" };
+            }
+            else if (!it.Ok) it.Actions.Add("skip");
             return it;
         }
 

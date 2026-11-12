@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.1")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.2")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.1 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.2 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -112,6 +112,7 @@ story += [
         ["1.5.0", "2026-11-12", "Claude + Codex", "Setup wizard: finds each user's own Claude/Codex sign-ins, offers browser sign-in, "
                                                   "installs missing tools after a prompt, one-click tested MCP servers; .NET included in the download."],
         ["1.5.1", "2026-11-12", "Claude", "Code review fixes for the setup wizard, new INSTALL.md guide, download link in the README."],
+        ["1.5.2", "2026-11-12", "Claude", "Skip option for sign-in: automatic when already signed in, or per account."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -411,6 +412,16 @@ story += [
         code("INSTALL.md") + ": download, SmartScreen, every wizard step, own-account sign-in, MCP servers, updating, troubleshooting. Included in the zip.",
         "README: a download link to the latest release at the top.",
     ]),
+    P("v1.5.2 · 2026-11-12 · " + by("Claude"), s_h1),
+    P("Skip option for sign-in", s_h2),
+    *bullets([
+        "When Claude and Codex are both already signed in, <b>Next</b> goes straight past the sign-in step; the step itself also has "
+        "<b>Skip sign-in</b>.",
+        "Each account that isn't detected has <b>Skip: already signed in</b>, for sign-ins XenoStudio can't see. It's remembered "
+        "(" + code("skipLogin") + " in settings), the account shows as skipped, and the app stops asking about it. "
+        "<b>Check sign-in again</b> undoes it.",
+        "Tested in a copy with no sign-ins: Skip, Check sign-in again and the automatic step skip all work.",
+    ]),
 ]
 
 # ---------------------------------------------------------------- files, backups, open items
@@ -468,6 +479,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.1", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.2", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)

@@ -109,7 +109,7 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 1. Windows 10/11 x64. Download the zip from **Releases**, unzip anywhere, run `XenoStudio.exe`. .NET is included; WebView2 is built into Windows 11.
 2. The **setup wizard** opens on first launch if anything is missing:
    - **Tools and AIs**: checks Node.js, Git, uv, the Claude Code CLI and the Codex CLI, and installs what's missing (official sources, after a Yes/No prompt).
-   - **Sign in**: uses the sign-ins already on your PC. If you aren't signed in, **Sign in** opens Claude's or Codex's own browser login.
+   - **Sign in**: uses the sign-ins already on your PC. If you aren't signed in, **Sign in** opens Claude's or Codex's own browser login. Already signed in? The step is skipped, or click **Skip**.
    - **MCP servers** (optional): Desktop Commander, Windows-MCP, Playwright, Fetch; each is tested before it's added.
    Reopen it any time from **Settings**.
 3. Open **Settings** to pick your work folder(s), permissions and theme.

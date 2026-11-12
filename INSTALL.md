@@ -36,6 +36,9 @@ XenoStudio uses **your own** accounts. No sign-ins, keys or settings are include
   *Signed in with ChatGPT*. Nothing else to do.
 - If not, **Sign in** opens that CLI's own login window, which opens your browser. Sign in there, then close the window.
   Claude uses a Claude plan (Pro or Max); Codex uses a ChatGPT plan.
+- **Skip**: if both are already signed in, the wizard skips this step by itself (or click **Skip sign-in**). If you're signed
+  in some way XenoStudio can't detect, click **Skip: already signed in** on that account and it stops asking.
+  **Check sign-in again** undoes it.
 - Prefer an API key? Put it in **Settings** (Claude: environment `ANTHROPIC_API_KEY`; Codex: run `codex login --with-api-key`).
 
 Sign-ins are stored where the CLIs always keep them (your user folder's `.claude` and `.codex`), not in XenoStudio.

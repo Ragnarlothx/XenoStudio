@@ -18,9 +18,16 @@ window.studioSetup = (() => {
     if(step===0){text(body,'h3','Install tools for this computer');text(body,'p','Install buttons show a confirmation listing the downloads. Existing tools and accounts are reused. Other AI providers remain in their current settings.');
       const missing=items.filter(x=>x.group!=='login'&&!x.ok&&x.actions?.includes('install'));const all=button('Install everything missing',()=>work(async()=>{const d=await request('setupInstall',{ids:missing.map(x=>x.id)});items=d.items||items;}),body);all.disabled=busy||!missing.length;
       for(const item of items.filter(x=>x.group!=='login')){const card=text(body,'div','','setupItem');text(card,'strong',(item.ok?'✓ ':'○ ')+item.name+(item.required?'':' (optional)'));text(card,'p',item.detail||item.why||item.status,'muted');if(!item.ok&&item.actions?.includes('install'))button('Install',()=>work(async()=>{const d=await request('setupInstall',{id:item.id});items=d.items||items;}),card);if(item.actions?.includes('open')&&item.url)button('Get installer',()=>host?.postMessage({cmd:'openUrl',url:item.url}),card);}
-    }else if(step===1){text(body,'h3','Claude and Codex sign-in');text(body,'p','Existing sign-ins are detected through each CLI. If needed, Sign in opens the CLI’s own login window and browser. Close its console when finished, then check again.');
-      const logins=items.filter(x=>x.group==='login');if(!logins.length)text(body,'p','No enabled Claude or Codex sign-ins need configuration.');
-      for(const item of logins){const card=text(body,'div','','setupItem');text(card,'strong',(item.ok?'✓ ':'○ ')+item.name);text(card,'p',item.detail||item.status,'muted');if(!item.ok&&item.actions?.includes('login'))button('Sign in',()=>work(async()=>{await request('setupLogin',{id:agentId(item)});await scan();}),card);}
+    }else if(step===1){text(body,'h3','Claude and Codex sign-in');
+      const logins=items.filter(x=>x.group==='login'),allOk=logins.every(x=>x.ok);
+      text(body,'p',allOk?'Already signed in on this PC. Nothing to do here; you can skip this step.':'Existing sign-ins are detected through each CLI. Sign in opens the CLI’s own login window and browser; close it when finished. Already signed in another way? Choose Skip.');
+      button(allOk?'Skip sign-in (already signed in)':'Skip this step',()=>goTo(2),body);
+      if(!logins.length)text(body,'p','No enabled Claude or Codex sign-ins need configuration.');
+      const set=item=>{items=items.map(x=>x.id===item.id?item:x);};
+      for(const item of logins){const card=text(body,'div','','setupItem');text(card,'strong',(item.status==='skipped'?'↷ ':item.ok?'✓ ':'○ ')+item.name);text(card,'p',item.detail||item.status,'muted');
+        if(item.actions?.includes('login')&&item.status!=='skipped')button('Sign in',()=>work(async()=>{await request('setupLogin',{id:agentId(item)});await scan();}),card);
+        if(item.actions?.includes('skip'))button('Skip: already signed in',()=>work(async()=>{set((await request('setupSkipLogin',{id:agentId(item),skip:true})).item);}),card);
+        if(item.actions?.includes('unskip'))button('Check sign-in again',()=>work(async()=>{set((await request('setupSkipLogin',{id:agentId(item),skip:false})).item);}),card);}
     }else if(step===2){text(body,'h3','Optional MCP tools');text(body,'p','Add only the tools you want. First use downloads the server and tests it before enabling it. Native confirmation prompts describe any required installation.');
       button('Import existing MCP configuration',()=>{close();window.studioSettings.open();host?.postMessage({cmd:'importMcp'});},body);
       for(const entry of catalog){const card=text(body,'div','','setupItem');text(card,'strong',entry.name);text(card,'p',entry.desc,'muted');text(card,'small','Requires '+(entry.needs==='node'?'Node.js':'uv')+'.');const b=button(entry.installed?'Test / enable':'Add',()=>work(async()=>{await request('mcpInstall',{id:entry.id});catalog=(await request('mcpCatalog')).servers||[];}),card);b.title='Download if needed, test, then enable this server';}
@@ -29,7 +36,9 @@ window.studioSetup = (() => {
   async function open(push){previousFocus=document.activeElement;if(!dialog.open)dialog.showModal();step=0;if(push?.items)items=push.items;render();$('setupClose').focus();await work(scan);}
   function close(){if(busy)return;dialog.close();previousFocus?.focus();}
   $('setupClose').onclick=close;dialog.addEventListener('cancel',e=>{e.preventDefault();close();});$('setupBack').onclick=()=>{if(step>0){step--;render();}};$('setupScan').onclick=()=>work(scan);
-  $('setupNext').onclick=async()=>{if(step===3){host?.postMessage({cmd:'setupDone'});close();return;}step++;if(step===2)await work(async()=>{catalog=(await request('mcpCatalog')).servers||[];});else render();};
+  async function goTo(i){step=i;if(i===2)await work(async()=>{catalog=(await request('mcpCatalog')).servers||[];});else render();}
+  // Next from step 1 skips the sign-in step on its own when both accounts are already signed in (or skipped)
+  $('setupNext').onclick=async()=>{if(step===3){host?.postMessage({cmd:'setupDone'});close();return;}const logins=items.filter(x=>x.group==='login');await goTo(step===0&&logins.length&&logins.every(x=>x.ok)?2:step+1);};
   host?.addEventListener('message',e=>{const d=e.data;if(d.type==='setupNeeded'){open(d);return;}if(d.type==='setupLog'){const log=$('setupLog');const line=String(d.line||'').replace(/(?:Bearer\s+|(?:sk-|ghp_|github_pat_))[A-Za-z0-9_.-]+/gi,'[redacted]');log.textContent=(log.textContent+'\n'+line).slice(-16000);log.scrollTop=log.scrollHeight;return;}const q=pending.get(d.rid);if(!q)return;clearTimeout(q.timer);pending.delete(d.rid);if(d.cancelled)q.reject(new Error('Installation cancelled.'));else if(d.ok)q.resolve(d.data||{});else q.reject(new Error(d.error||'Setup could not complete this step.'));});
   return {open};
 })();

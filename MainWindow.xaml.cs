@@ -222,6 +222,19 @@ namespace XenoStudio
                 case "setupInstall": _ = SetupInstall(n); break;
                 case "setupLogin": _ = SetupLogin(n); break;
                 case "setupApiKey": _ = SetupApiKey(n); break;
+                case "setupSkipLogin":   // { id: "claude"|"codex", skip: bool }
+                    {
+                        var sid = (string)n["id"]; var skip = (bool?)n["skip"] ?? true;
+                        if (sid is "claude" or "codex")
+                        {
+                            S.SkipLogin ??= new();
+                            S.SkipLogin.Remove(sid);
+                            if (skip) S.SkipLogin.Add(sid);
+                            SaveSettings();
+                        }
+                        _ = ReplyAsync(n, "setupSkipLogin", async () => new { item = await ScanOne(sid + "-login") });
+                    }
+                    break;
                 case "setupDone": S.SetupDone = true; SaveSettings(); Post(new { type = "settings", settings = S, exe = ExeInfo() }); break;
                 case "mcpCatalog": Reply(n, "mcpCatalog", () => new { servers = Setup.Catalog(S), node = Setup.Which("npx") != null, uv = Setup.Which("uvx") != null }); break;
                 case "mcpInstall": _ = McpInstall(n); break;
