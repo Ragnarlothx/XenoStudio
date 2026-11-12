@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.6")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.7")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.6 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.7 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -116,6 +116,7 @@ story += [
         ["1.5.3", "2026-11-12", "Codex", "Workspace and drives: pick any drive or folder on the PC, including USB and network drives."],
         ["1.5.4", "2026-11-12", "Claude", "Review fixes: no freeze from offline network drives, docs cleaned up."],
         ["1.5.6", "2026-11-12", "Codex", "Clear the previous script immediately and stop its watcher when switching files or diffs."],
+        ["1.5.7", "2026-11-12", "Claude", "Update XenoStudio from GitHub: Settings → Runtime, checksum-verified, closes and reopens by itself."],
         ["1.5.5", "2026-11-12", "Claude", "Code workspace always switches to the clicked file, with a clear message when it can't be opened."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
@@ -465,7 +466,24 @@ story += [
         "The same loading state applies to change-card diffs. Missing or non-text files show their own error instead of old code.",
         "Browser regression checks cover switching scripts, overlapping requests, missing files and old-file notifications. Release built and packaged without local settings or credentials.",
     ]),
-
+    P("v1.5.7 · 2026-11-12 · " + by("Claude"), s_h1),
+    P("Update XenoStudio from GitHub (" + code("Updater.cs") + ")", s_h2),
+    *bullets([
+        "<b>Settings → Runtime → XenoStudio updates</b>: shows whether a newer release is out, with <b>Check for updates</b>, "
+        "<b>Update XenoStudio</b> and <b>Release notes</b>.",
+        "<b>Check GitHub for new XenoStudio versions at start-up</b> (on by default): a short notice when a new release is out. "
+        "It never installs anything by itself.",
+        "<b>Update XenoStudio</b> asks first (Yes/No, with the version and download size), downloads the release zip and checks it "
+        "against GitHub's SHA-256 checksum; a mismatch is deleted. It also checks the zip really contains that version.",
+        "XenoStudio then closes, a small script copies the new files in and reopens the app. While it copies, XenoStudio refuses to "
+        "start, so an early click can't leave a mix of versions. Locked files are retried.",
+        code("data\\") + " (chats, settings, sign-ins) and " + code("runtime\\") + " are never touched. The previous version is kept in "
+        + code("_selfupdate\\previous") + " and the log in " + code("_selfupdate\\update.log") + ".",
+        "Folders XenoStudio can't write to (such as Program Files) get a clear message pointing to the release page instead.",
+        "Tested end to end: a copy built as 1.5.0 found 1.5.6 on GitHub, downloaded and verified it, closed, installed and reopened "
+        "as 1.5.6 in about 4 seconds, with its data and runtime\\ kept and 1.5.0 backed up.",
+    ]),
+    P("README and INSTALL.md: new Updating sections.", s_meta),
 ]
 
 # ---------------------------------------------------------------- files, backups, open items
@@ -523,6 +541,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.6", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.7", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)

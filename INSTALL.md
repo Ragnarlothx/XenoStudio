@@ -73,7 +73,9 @@ Drives that aren't connected are greyed out; reconnect them and click **Refresh 
 where the AIs start. Click **Save settings** to apply. Windows permissions and the access mode you chose for each AI still apply.
 
 ## Updating
-Download the new zip and unzip it **over** the old folder (keep `data\`), or unzip to a new folder and copy `data\` across.
+Easiest: **Settings → Runtime → Update XenoStudio**. It downloads the latest release, checks it against GitHub's checksum, then closes, installs and reopens by itself; chats, settings and sign-ins are kept. XenoStudio also tells you at start-up when a new version is out (switch that off in **Settings → Runtime**).
+
+By hand: download the new zip and unzip it **over** the old folder (keep `data\`), or unzip to a new folder and copy `data\` across.
 
 ## Troubleshooting
 | Problem | Fix |

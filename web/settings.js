@@ -74,8 +74,27 @@ window.studioSettings = (() => {
       ['ui.reduceMotion','Reduce animation','check'],
       ['ui.highContrast','Brighter secondary text','check']
     ],
-    Runtime: []
+    Runtime: [['autoCheckUpdates','Check GitHub for new XenoStudio versions at start-up','check']]
   };
+  // ---- XenoStudio updates from GitHub releases (backend: Updater.cs). Nothing installs without Update + a Yes/No prompt.
+  const upd={info:null,state:'',busy:false};
+  function renderUpdates(pane){
+    const h=document.createElement('h3');h.textContent='XenoStudio updates';pane.append(h);
+    const st=document.createElement('p');st.id='updateStatus';st.setAttribute('role','status');pane.append(st);
+    const row=document.createElement('div');row.className='row';pane.append(row);
+    button('Check for updates',()=>{upd.state='Checking GitHub…';paintUpdate();send({cmd:'checkUpdate',rid:'upd-check'});},row);
+    button('Update XenoStudio',()=>{upd.state='Waiting for your confirmation…';upd.busy=true;paintUpdate();send({cmd:'installUpdate',rid:'upd-install'});},row).id='updateInstall';
+    button('Release notes',()=>upd.info?.url&&send({cmd:'openUrl',url:upd.info.url}),row).id='updateNotes';
+    const p=document.createElement('p');p.className='muted';p.textContent='Updates come from the official GitHub releases and are checked against GitHub’s checksum. XenoStudio closes, installs and reopens by itself; chats, settings, sign-ins and runtime\\ are kept, and the previous version is backed up in _selfupdate\\previous.';pane.append(p);
+    paintUpdate();
+    if(!upd.info&&!upd.state){upd.state='Checking GitHub…';paintUpdate();send({cmd:'checkUpdate',rid:'upd-check'});}
+  }
+  function paintUpdate(){
+    const st=$('updateStatus');if(!st)return;const i=upd.info;
+    st.textContent=upd.state||(i?(i.newer?'Version '+i.latest+' is available (you have '+i.current+').'+(i.canInstall?'':' '+i.why):'You have the latest version ('+i.current+').'):'');
+    const b=$('updateInstall');if(b){b.disabled=upd.busy||!(i&&i.newer&&i.canInstall);b.classList.toggle('sec',!(i&&i.newer));}
+    const r=$('updateNotes');if(r)r.disabled=!i?.url;
+  }
   const defaults = {fontSize:13,accent:'#4f9cf9',density:'comfortable',timestamps:true,tools:true,sidebar:true,enterToSend:true,defaultTarget:'auto',autoScroll:true,renderMarkdown:true,confirmNew:false,confirmDelete:true,showAvatars:true,showCopy:false,showBackup:false,composerRows:3,messageWidth:980,lineHeight:155,codeSize:12,wrapCode:false,reduceMotion:false,highContrast:false};
   function get(key) { return key.startsWith('ui.') ? draft.ui[key.slice(3)] : draft[key]; }
   function set(key,value) { if(key.startsWith('ui.')) draft.ui[key.slice(3)] = value; else draft[key] = value; }
@@ -166,6 +185,7 @@ window.studioSettings = (() => {
       const p=document.createElement('p');p.textContent='Pinned CLIs stay in runtime\\ until you choose to replace them with the installed versions. Account sign-in uses each CLI’s own authentication.';pane.append(p);
       const pre=document.createElement('pre');pre.id='runtimeDetails';pre.textContent=window.studioRuntime||'Loading runtime information…';pane.append(pre);
       for(const [text,cmd] of [['Refresh versions','runtimeInfo'],['Open app data','openData'],['Open Claude profile','openProfile'],['Export settings','exportSettings']]) button(text,()=>send({cmd}),pane);
+      renderUpdates(pane);
       button('Update pinned CLIs from installed copies',()=>{if(confirm('Replace both pinned executables with the versions installed on this PC?'))send({cmd:'updateRuntime',which:'both'});},pane);
       button('Reset all settings',()=>{if(confirm('Reset saved settings to defaults?')) {send({cmd:'resetSettings'});close();}},pane);
       const meta=document.createElement('p');meta.className='muted';meta.textContent=window.studioMeta||'';pane.append(meta);
@@ -221,6 +241,10 @@ window.studioSettings = (() => {
     $('modal').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}if(e.key==='Tab'){const nodes=[...$('modal').querySelectorAll('button,input,textarea,select')].filter(n=>n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   }
   function receive(d) {
+    if(d.type==='checkUpdate'){upd.state=d.ok?'':'Couldn’t check for updates: '+d.error;if(d.ok)upd.info=d.data;paintUpdate();}
+    if(d.type==='updateAvailable'){upd.info=d.info;paintUpdate();}
+    if(d.type==='updateProgress'){upd.state='Downloading… '+d.pct+'%';paintUpdate();}
+    if(d.type==='installUpdate'){upd.busy=!!d.ok;upd.state=d.ok?'Installing '+d.data.version+'… XenoStudio will close and reopen by itself. Don’t reopen it yourself.':d.cancelled?'':'Update failed: '+d.error;paintUpdate();}
     if(d.type==='init'&&d.promptDefaults) promptDefaults=d.promptDefaults;
     if(d.type==='promptPreview'&&previewPending&&d.id===previewPending.id&&previewPending.snapshot===JSON.stringify({...draft,mcpServers:servers})&&$('promptSystemPreview')) {
       $('promptSystemPreview').textContent=d.system||'';$('promptFooterPreview').textContent=d.footer||'';

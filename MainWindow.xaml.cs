@@ -177,6 +177,7 @@ namespace XenoStudio
                     PostStatus();
                     _ = PostRuntime();
                     _ = SetupCheckOnStart();
+                    _ = UpdateCheckOnStart();
                     webReady = true;
                     if (mcpRefreshed.Count > 0) Notice("Updated MCP servers whose paths had gone stale: " + string.Join(", ", mcpRefreshed));
                     // XenoStudio.exe --send "message"  → starts a new chat with that message (scripting / shortcuts)
@@ -238,6 +239,9 @@ namespace XenoStudio
                 case "setupDone": S.SetupDone = true; SaveSettings(); Post(new { type = "settings", settings = S, exe = ExeInfo() }); break;
                 case "mcpCatalog": Reply(n, "mcpCatalog", () => new { servers = Setup.Catalog(S), node = Setup.Which("npx") != null, uv = Setup.Which("uvx") != null }); break;
                 case "mcpInstall": _ = McpInstall(n); break;
+                // ---- app updates from GitHub releases (Updater.cs)
+                case "checkUpdate": _ = ReplyAsync(n, "checkUpdate", async () => lastUpdate = await Updater.Check(AppVersion)); break;
+                case "installUpdate": _ = InstallUpdate(n); break;
                 case "watchFile": Watch((string)n["path"], true); break;
                 case "unwatchFile": Watch((string)n["path"], false); break;
                 case "openImage":
@@ -416,6 +420,60 @@ namespace XenoStudio
             var rid = (string)n["rid"];
             try { Post(new { type, rid, ok = true, data = await work() }); }
             catch (Exception ex) { Post(new { type, rid, ok = false, error = ex.Message }); }
+        }
+
+        // ---------------------------------------------------------------- app updates
+        Updater.Info lastUpdate;
+        bool updating;
+
+        async Task UpdateCheckOnStart()
+        {
+            if (!S.AutoCheckUpdates) return;
+            try
+            {
+                await Task.Delay(4000);   // let the window and setup check settle first
+                var i = lastUpdate = await Updater.Check(AppVersion);
+                if (i.Newer)
+                {
+                    Post(new { type = "updateAvailable", info = i });
+                    Notice($"XenoStudio {i.Latest} is available (you have {i.Current}). Settings → Runtime → Update XenoStudio.");
+                }
+            }
+            catch { /* offline or GitHub unreachable: say nothing, the button still works later */ }
+        }
+
+        /// <summary>Confirm → download (checksum-verified) → unpack → hand over to the install script → close. Reopens on the new version.</summary>
+        async Task InstallUpdate(JsonNode n)
+        {
+            var rid = (string)n["rid"];
+            void Fail(string error) => Post(new { type = "installUpdate", rid, ok = false, error });
+            if (updating) { Fail("An update is already being downloaded."); return; }
+            if (busy) { Fail("An AI is still replying. Stop it or wait, then update."); return; }
+            Updater.Info i;
+            try { i = await Updater.Check(AppVersion); }
+            catch (Exception ex) { Fail("Couldn't reach GitHub: " + ex.Message); return; }
+            if (!i.Newer) { Fail($"You already have the latest version ({i.Current})."); return; }
+            if (!i.CanInstall) { Fail(i.Why); return; }
+
+            var mb = Math.Max(1, (int)Math.Round(i.Size / 1048576.0));
+            var text = $"Update XenoStudio from {i.Current} to {i.Latest}?\n\n" +
+                       $"•  Downloads {i.Asset} ({mb} MB) from GitHub and checks it against GitHub's checksum.\n" +
+                       "•  XenoStudio then closes, installs the update and reopens by itself (about 10 seconds). Don't reopen it yourself.\n" +
+                       "•  Your chats, settings and sign-ins are kept. The current version is backed up in _selfupdate\\previous.";
+            if (MessageBox.Show(this, text, "Update XenoStudio", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            { Post(new { type = "installUpdate", rid, ok = false, cancelled = true }); return; }
+
+            updating = true;
+            try
+            {
+                var staged = await Updater.DownloadAndStage(i, pct => Post(new { type = "updateProgress", pct }));
+                Updater.LaunchInstaller(staged);
+                Post(new { type = "installUpdate", rid, ok = true, data = new { version = i.Latest } });
+                await Task.Delay(1500);   // let the page show "Installing…" before the window goes
+                Close();                  // Closing saves the chat and window position
+            }
+            catch (Exception ex) { Fail(ex.Message); }
+            finally { updating = false; }
         }
 
         // ---------------------------------------------------------------- setup

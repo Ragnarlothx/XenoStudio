@@ -186,6 +186,7 @@ namespace XenoStudio
 
         // ---- one-time upgrades of saved settings when a newer XenoStudio first opens them
         public List<string> SkipLogin { get; set; } = new();   // "claude"/"codex": user said it's signed in already; don't check or nag
+        public bool AutoCheckUpdates { get; set; } = true;   // look for a newer GitHub release at start-up (only tells you; never installs by itself)
         public bool SetupDone { get; set; } = false;    // first-run setup finished (or everything was already in place)
         public int SettingsVersion { get; set; } = 0;   // 0 = saved by 1.1.0 or older (the field didn't exist)
 

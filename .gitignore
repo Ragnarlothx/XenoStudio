@@ -26,3 +26,6 @@ Bible Project*.pdf
 *.user
 Thumbs.db
 desktop.ini
+
+# in-app updater downloads, staging and the previous-version backup
+_selfupdate/

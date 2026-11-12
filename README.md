@@ -100,6 +100,7 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 - **Workspace and drives**: work in any folder or drive on the PC (local, USB, mapped network). **Settings → General → Workspace and drives** lists the drives found (ones that aren't connected are greyed out), with **Add drive**, **Add working folder…** and **Refresh drives**. Several entries are allowed (`D:\Projects,E:\Work`): the first is where the AIs start, the rest are added for both.
 - **MCP servers**: one shared list for both AIs (stdio or http/sse), importable from your Claude and Codex configs; stale paths are repaired automatically when the Codex app updates.
 - **Single instance**: launching the exe again brings the open window forward. `XenoStudio.exe --send "message"` starts a chat.
+- **Updates from GitHub**: **Settings → Runtime → Update XenoStudio** (see [Updating](#updating)).
 - Window position remembered; crash log in `data\crash.log`.
 
 ---
@@ -116,6 +117,22 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 
 No accounts, keys or sign-ins ship with XenoStudio. Everyone uses their own Claude and ChatGPT accounts.
 Full guide with troubleshooting: [INSTALL.md](INSTALL.md).
+
+### Updating
+XenoStudio can update itself from this repository's releases:
+
+1. **Settings → Runtime → XenoStudio updates** shows whether a newer version is out. With *Check GitHub for new XenoStudio
+   versions at start-up* on (the default), you also get a short notice when one is released. It only tells you; it never
+   installs by itself.
+2. Click **Update XenoStudio** and confirm. It downloads the release zip and checks it against GitHub's SHA-256 checksum;
+   a download that doesn't match is deleted.
+3. XenoStudio closes, installs the new files, and **reopens by itself** a few seconds later. Don't reopen it yourself;
+   if you try, it tells you an update is installing.
+
+Your chats, settings, sign-ins and untime\ are kept. The previous version is backed up in _selfupdate\previous
+(copy it back over the folder to undo); the log is _selfupdate\update.log. **Release notes** opens the release page.
+If XenoStudio is in a folder it can't write to (such as Program Files), the button explains that; download the zip
+from Releases instead.
 
 ### Build
 ```
@@ -196,6 +213,7 @@ pictures and snapshots.
 | `CodePreview.cs` | Workspace file access, Save as, Open in XenoEdit |
 | `Setup.cs` | Setup wizard backend: tool/CLI/sign-in checks, prompted installs, MCP catalog |
 | `Settings.cs` | Settings model, paths, MCP and work-folder helpers |
+| `Updater.cs` | Update check, checksum-verified download and install from GitHub releases |
 | `ThemeChrome.cs`, `App.xaml.cs` | Title bar colors, single instance, crash log |
 | `web/` | The UI (`app.js` chat, `preview.js` workspace, `settings.js`, `style.css`), Monaco in `web/lib/vs` |
 | `_dev/` | Packaging, signing and change-notes scripts |
