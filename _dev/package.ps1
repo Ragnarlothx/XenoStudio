@@ -1,4 +1,4 @@
-# Builds XenoStudio and zips a shareable copy into release\.
+﻿# Builds XenoStudio and zips a shareable copy into release\.
 #   powershell -ExecutionPolicy Bypass -File _dev\package.ps1            # full package (with pinned claude.exe + codex.exe, ~700 MB)
 #   powershell -ExecutionPolicy Bypass -File _dev\package.ps1 -NoRuntime # no CLIs: the setup wizard installs them (~65 MB zip)
 #   add -FrameworkDependent for a tiny zip that needs the .NET 8 Desktop Runtime installed
@@ -29,7 +29,7 @@ if (-not $NoRuntime) {   # the pinned CLIs aren't in git; take them from the wor
     Copy-Item (Join-Path $root 'dist\runtime') (Join-Path $stage 'runtime') -Recurse -Force
 }
 Get-ChildItem $stage -Recurse -Include *.pdb, *.xml | Remove-Item -Force
-Copy-Item README.md, THIRD_PARTY_NOTICES.md $stage -ErrorAction SilentlyContinue
+Copy-Item README.md, INSTALL.md, THIRD_PARTY_NOTICES.md $stage -ErrorAction SilentlyContinue
 
 $suffix = $(if ($NoRuntime) { '' } else { '-with-cli' }) + $(if ($FrameworkDependent) { '-needs-dotnet' } else { '' })
 $zip = Join-Path $root "release\XenoStudio-v$ver-win-x64$suffix.zip"

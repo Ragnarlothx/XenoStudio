@@ -3,6 +3,9 @@
 **Claude and Codex in one chat window, working on your files together, with a code workspace that shows what they change.**
 A Windows desktop app by **Xeno** (C# .NET 8 WPF + WebView2).
 
+**[Download the latest release](../../releases/latest)** → unzip → run `XenoStudio.exe`. A setup wizard installs anything missing and
+signs you in with your own accounts. Step-by-step: **[INSTALL.md](INSTALL.md)**.
+
 ![XenoStudio chat](docs/screenshots/chat.png)
 
 > Screenshots use a made-up demo project ("aurora-shop") and a demo chat. No real files or conversations.
@@ -112,6 +115,7 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 3. Open **Settings** to pick your work folder(s), permissions and theme.
 
 No accounts, keys or sign-ins ship with XenoStudio. Everyone uses their own Claude and ChatGPT accounts.
+Full guide with troubleshooting: [INSTALL.md](INSTALL.md).
 
 ### Build
 ```

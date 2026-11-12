@@ -401,7 +401,10 @@ namespace XenoStudio
             try
             {
                 var items = await Setup.Scan(S, Exe("claude"), Exe("codex"));
-                if (items.Any(i => i.Required && !i.Ok)) Post(new { type = "setupNeeded", items, firstRun = !S.SetupDone });
+                var missing = items.Where(i => i.Required && !i.Ok).ToList();
+                // the wizard pops up until setup has been finished once; after that a missing item is a notice, not a modal every launch
+                if (missing.Count > 0 && !S.SetupDone) Post(new { type = "setupNeeded", items, firstRun = true });
+                else if (missing.Count > 0) Notice("Setup: " + string.Join(", ", missing.Select(i => i.Name)) + " needs attention. Open Settings → Setup tools and sign-in.");
                 else if (!S.SetupDone) await Dispatcher.InvokeAsync(() => { S.SetupDone = true; SaveSettings(); });
             }
             catch (Exception ex) { CrashLog.Write("setup-scan", ex); }
@@ -427,14 +430,16 @@ namespace XenoStudio
             setupBusy = true;
             try
             {
+                var skip = new HashSet<string>();
                 foreach (var id in steps)
                 {
+                    if (skip.Contains(id)) continue;
                     Post(new { type = "setupLog", id, line = $"Installing {id}…" });
                     var ok = await Setup.Install(id, line => Post(new { type = "setupLog", id, line }));
                     if (!ok && id == "node" && steps.Contains("codex"))
                     {   // codex needs npm; check whether node is usable anyway (winget says non-zero when it's already there)
                         Setup.RefreshPath();
-                        if (Setup.Which("npm") == null) { Post(new { type = "setupLog", id = "codex", line = "Skipping Codex: Node.js isn't available yet." }); steps.Remove("codex"); }
+                        if (Setup.Which("npm") == null) { Post(new { type = "setupLog", id = "codex", line = "Skipping Codex: Node.js isn't available yet." }); skip.Add("codex"); }
                     }
                 }
                 var rescan = steps.Concat(steps.Where(i => i is "claude" or "codex").Select(i => i + "-login")).Distinct();
