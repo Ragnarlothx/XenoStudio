@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.2.0")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.4.0")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.2.0 (2026-11-09)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.4.0 (2026-11-11)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -105,10 +105,14 @@ story += [
         ["1.2.0", "2026-11-09", "Claude + Codex", "Single instance (no duplicate windows), automatic repair of stale MCP paths, "
                                                   "crash-proof turns, retry once by default, remembered window position, crash log, "
                                                   "drag-and-drop overlay and fixes."],
+        ["1.3.0", "2026-11-10", "Claude + Codex", "Cyberpunk and Hacker themes; the Windows 11 title bar and border follow the theme."],
+        ["1.4.0", "2026-11-11", "Claude + Codex", "Code workspace with the Monaco editor (from XenoEdit), code tiles, change cards and "
+                                                  "before/after diffs of every AI edit, live reload, Open in XenoEdit, safer updater, "
+                                                  "README with demo, private GitHub repo and release."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
-      "while Codex was down. " + by("Codex") + " owns the web UI (web\\) and did the 1.2.0 drag-and-drop work.", s_meta),
+      "while Codex was down. " + by("Codex") + " owns the web UI (web\\) and did the 1.2.0 drag-and-drop work, the 1.3.0 theme styles and the 1.4.0 workspace UI.", s_meta),
 ]
 
 # ---------------------------------------------------------------- 1.0.0
@@ -250,6 +254,93 @@ story += [
     ]),
 ]
 
+
+# ---------------------------------------------------------------- 1.3.0
+story += [
+    PageBreak(),
+    P("v1.3.0 · 2026-11-10 · " + by("Claude") + " + " + by("Codex"), s_h1),
+    P("New themes", s_h2),
+    table([
+        ["Theme", "Background", "Text / accent", "Window border"],
+        ["Dark", code("#1e1f22"), "Default dark grey", "Follows Windows"],
+        ["Light", code("#ffffff"), "Default light", "Follows Windows"],
+        ["Cyberpunk", code("#0b0618"), "Neon cyan " + code("#05d9e8") + " with hot pink", "Pink " + code("#ff2a6d")],
+        ["Hacker", code("#020602"), "Terminal green " + code("#33ff66"), "Green " + code("#1f8f3a")],
+    ], [1.0 * inch, 1.1 * inch, 2.6 * inch, W - 4.7 * inch]),
+    *bullets([
+        by("Codex") + ": the two new color sets in " + code("web\\style.css") + " and the theme picker in Settings.",
+        by("Claude") + ": " + code("ThemeChrome.cs") + " colors the Windows 11 caption bar, caption text and window border so the "
+        "whole window matches the theme, not just the page. The window background matches too, so there's no white flash on open.",
+        "Settings only accept the four known themes; anything else falls back to Dark.",
+    ]),
+]
+
+# ---------------------------------------------------------------- 1.4.0
+story += [
+    P("v1.4.0 · 2026-11-11 · " + by("Claude") + " + " + by("Codex"), s_h1),
+    P("Goal: blend the editor into the chat so both you and the AIs can see code and every change they make. "
+      "Backup taken first: " + code("Backups\\XenoStudio-v1.3.0-20261111-212123") + ".", s_meta),
+    P("Code workspace (UI by " + by("Codex") + ", backend by " + by("Claude") + ")", s_h2),
+    *bullets([
+        "A workspace panel beside the chat using <b>Monaco</b>, the VS Code editor, copied from XenoEdit into " + code("web\\lib\\vs") +
+        ": syntax highlighting, folding, minimap; follows the app theme.",
+        "<b>Code tiles:</b> long code blocks in replies become compact tiles (" + code("snippet.js · javascript · 9 lines") + "); click to open.",
+        "<b>File links:</b> file names in messages and tool lines open the file in the workspace.",
+        "<b>Edit code / Save file:</b> edit in place and save to disk. The chat gets a note such as "
+        "<i>edited src\\cart.js in the editor (+1 −1)</i> so both AIs know on their next turn. <b>Save as…</b> for code blocks.",
+        "<b>Attach code to chat:</b> send a selection or the whole draft as context with your next message.",
+        "<b>Open in XenoEdit:</b> hands the file (or an unsaved block) to XenoEdit. Found automatically from a Desktop / Start Menu "
+        "shortcut or a running XenoEdit; can also be set in Settings. Never hardcoded.",
+        "<b>Live reload:</b> an open file reloads when an AI changes it, and asks first if you have unsaved edits.",
+        "File reading is capped at 2 MB and refuses binary files; relative paths resolve against the work folders.",
+    ]),
+    P("AI change tracking (" + by("Claude") + ": " + code("EditTracker.cs") + ")", s_h2),
+    *bullets([
+        "Every file Claude or Codex edits during a reply gets a <b>change card</b> under that reply: who, which file, lines added/removed, "
+        "created or deleted.",
+        "Clicking a card opens a red/green <b>before/after diff</b>. Snapshots are stored per message in "
+        + code("data\\snapshots\\") + " and deleted with the chat.",
+        "<b>Claude</b> reports an edit just before making it, so its before-state is exact.",
+        "<b>Codex</b> reports an edit only after it lands. To still get an accurate before-state, XenoStudio snapshots likely files at the "
+        "start of every turn: paths mentioned in the prompt and files edited earlier in the chat. A Codex edit to any other file is marked "
+        "<i>before not captured</i> and shows the result.",
+        "Verified with real edits from both AIs (+2 −1 each).",
+        "Limit: files changed through shell commands (a script writing a file) aren't reported by the CLIs, so they get no card.",
+    ]),
+    P("Backend requests added", s_h2),
+    table([
+        ["Request / event", "Does"],
+        [code("previewFile"), "Read a file for the workspace (size and binary checks)."],
+        [code("saveCode") + ", " + code("saveFile"), "Save a code block (Save as… dialog) or the open file; saving adds the edit note to the chat."],
+        [code("openInXenoEdit") + ", " + code("xenoEditInfo"), "Find and launch XenoEdit."],
+        [code("fileDiff"), "Return the before/after of one change card."],
+        [code("watchFile") + ", " + code("unwatchFile"), "Watch the open file; pushes " + code("fileChanged") + " when it changes on disk."],
+        [code("aiFile") + " (push)", "Tells the UI an AI is editing a file, live during the turn."],
+    ], [2.2 * inch, W - 2.2 * inch]),
+    P("Fixes and tooling", s_h2),
+    table([
+        ["Problem", "Fix"],
+        ["The first 1.4.0 install half-failed: the app was reopened one second before files were copied, so they were locked.",
+         code("_update\\apply-update.ps1") + " rewritten: if files are locked it waits for the app to close and retries (up to 20 times), "
+         "and only restarts the app once every file is in place. The retry installed 1.4.0 cleanly."],
+        ["Deleting a chat could leave its edit snapshots behind.", "Snapshots are removed first, then the chat file and its pictures."],
+    ], [2.6 * inch, W - 2.6 * inch]),
+    P("Documentation, GitHub and sharing", s_h2),
+    *bullets([
+        code("README.md") + " replaces README.txt: what the app is, a 2-minute demo, the full feature list, install/build steps, data and "
+        "project layout. Screenshots in " + code("docs\\screenshots\\") + " use a made-up demo project and demo chat (no real files or chats).",
+        "Source is on GitHub in a <b>private</b> repository. Before every push the code was scanned so only the name Xeno appears: "
+        "no real name, email, address, location or machine paths (the build strips local paths from the exe too). "
+        "Commits use a GitHub no-reply identity.",
+        "One invited collaborator can view and download the repository.",
+        "<b>Release v1.4.0</b> on the private repo: " + code("XenoStudio-v1.4.0-win-x64.zip") + " (3.7 MB), ready to run. "
+        "It contains no " + code("data\\") + " folder (chats, settings, keys) and no CLI executables; users bring their own "
+        + code("claude.exe") + " / " + code("codex.exe") + " and need the .NET 8 Desktop Runtime.",
+        "Code signing (to stop the SmartScreen warning) is prepared but on hold: an individual certificate would show a legal name "
+        "instead of Xeno.",
+    ]),
+]
+
 # ---------------------------------------------------------------- files, backups, open items
 story += [
     P("Files changed", s_h1),
@@ -265,6 +356,17 @@ story += [
         [code("web\\style.css"), "1.1.0, 1.2.0", "Attachment and thumbnail styles (Claude); drop overlay (Codex)."],
         [code("web\\settings.js"), "1.1.0", "Multi-folder labels, Add working folder…, Clear folders."],
         [code("runtime\\*.exe"), "1.1.0", "Claude Code 2.1.321, Codex 0.167.0-alpha.3.2 and helpers."],
+        [code("ThemeChrome.cs"), "1.3.0", "New: theme colors for the Windows title bar, caption text and border."],
+        [code("CodePreview.cs"), "1.4.0", "New: workspace file reading, Save as, finding and opening XenoEdit, preview temp files."],
+        [code("EditTracker.cs"), "1.4.0", "New: change cards, before/after snapshots, diffs."],
+        [code("Agents.cs"), "1.4.0", "Reports file edits from Claude (before) and Codex (started / completed)."],
+        [code("MainWindow.xaml.cs"), "1.3.0, 1.4.0", "Theme chrome; workspace requests, file watching, per-turn edit tracking, editor edit notes, chat delete cleanup."],
+        [code("Settings.cs"), "1.3.0, 1.4.0", "Theme validation; XenoEdit path setting."],
+        [code("web\\preview.js"), "1.4.0", "New (Codex): workspace, code tiles, change cards, diff view."],
+        [code("web\\lib\\vs\\"), "1.4.0", "Monaco editor, copied from XenoEdit."],
+        [code("web\\style.css") + ", " + code("web\\settings.js"), "1.3.0, 1.4.0", "Cyberpunk / Hacker themes, workspace styles, XenoEdit path field (Codex)."],
+        [code("_update\\apply-update.ps1"), "1.4.0", "Retry loop when files are locked."],
+        [code("README.md") + ", " + code("docs\\screenshots\\"), "1.4.0", "New guide with demo and screenshots."],
     ], [1.6 * inch, 0.95 * inch, W - 2.55 * inch]),
     P("Backups and how to roll back", s_h1),
     table([
@@ -274,6 +376,9 @@ story += [
         [code("_update\\old-dist-20261109-180615"), "App files of 1.1.0, replaced by the 1.2.0 install."],
         [code("_update\\old-runtime\\"), "Claude Code 2.1.312 and Codex 0.166 executables."],
         [code("_update\\apply-update.log"), "Log of each install."],
+        [code("_update\\old-dist-20261110-193553"), "App files of 1.2.0, replaced by the 1.3.0 install."],
+        [code("Backups\\XenoStudio-v1.3.0-20261111-212123"), "Whole app at 1.3.0, taken before the 1.4.0 work."],
+        [code("_update\\old-dist-20261111-214311"), "App files of 1.3.0, replaced by the 1.4.0 install."],
     ], [3.1 * inch, W - 3.1 * inch]),
     Spacer(1, 4),
     P("To roll back: close XenoStudio and copy a backup's files over " + code("dist\\") + " (leave " + code("dist\\data\\") + " in place)."),
@@ -282,11 +387,12 @@ story += [
         "Dragging a picture from the desktop into the running app (Codex's note).",
         "Clicking through the picture UI inside the app by hand: the code paths were tested outside the app.",
         "The crash log and crash-proof turns: they only run when something actually crashes.",
+        "The Save as… dialog and launching XenoEdit from the workspace, clicked by hand in the installed app.",
     ]),
 ]
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.2.0", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.4.0", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
