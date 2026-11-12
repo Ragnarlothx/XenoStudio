@@ -47,6 +47,17 @@ namespace XenoStudio
                 return;
             }
 
+            // _update\apply-update.ps1 drops this file while it copies a new build over this folder. Starting now would lock
+            // files halfway through and leave a mix of versions, so wait: the updater reopens the app itself when it's done.
+            var installing = Path.Combine(AppContext.BaseDirectory, "..", "_update", "installing.lock");
+            if (File.Exists(installing) && DateTime.Now - File.GetLastWriteTime(installing) < TimeSpan.FromMinutes(10))
+            {
+                MessageBox.Show("XenoStudio is installing an update right now.\n\nIt will open by itself in a few seconds.",
+                                "XenoStudio", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
             single = new Mutex(true, @"Local\" + Key, out bool first);
             if (!first)
             {
