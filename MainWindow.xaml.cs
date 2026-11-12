@@ -307,6 +307,9 @@ namespace XenoStudio
                     var fd = new Microsoft.Win32.OpenFileDialog { Title = (string)n["title"] ?? "Choose file", Filter = (string)n["filter"] ?? "All files|*.*" };
                     if (fd.ShowDialog(this) == true) Post(new { type = "pickedFile", key = (string)n["key"], path = fd.FileName });
                     break;
+                case "workspaceDrives":
+                    Post(new { type = "workspaceDrives", drives = DriveInfo.GetDrives().Select(d => new { path = d.Name, kind = d.DriveType.ToString(), ready = DriveReady(d) }).ToArray() });
+                    break;
                 case "pickDir":
                     var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Shared working folder", InitialDirectory = S.PrimaryWorkDir };
                     if (dlg.ShowDialog(this) == true) Post(new { type = "pickedDir", path = dlg.FolderName });
@@ -525,6 +528,8 @@ namespace XenoStudio
                 return new { tools, servers = Setup.Catalog(S) };
             });
         }
+
+        static bool DriveReady(DriveInfo drive) { try { return drive.IsReady; } catch { return false; } }
 
         static void OpenUrl(string url)
         {

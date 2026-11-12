@@ -2,7 +2,7 @@
 window.studioSettings = (() => {
   const $ = id => document.getElementById(id);
   const send = data => window.chrome?.webview?.postMessage(data);
-  let current = {}, draft = {}, servers = [], active = 'General';
+  let current = {}, draft = {}, servers = [], drives = [], active = 'General';
   let promptDefaults = {template:'',footer:'',placeholders:[]}, promptFocus = 'promptTemplate', previewId = 'claude', previewPending = null;
   const groups = {
     General: [
@@ -134,13 +134,25 @@ window.studioSettings = (() => {
     for(const [title,id] of [['Resolved system prompt','promptSystemPreview'],['Resolved turn footer','promptFooterPreview']]){const h=document.createElement('h3');h.textContent=title;const pre=document.createElement('pre');pre.id=id;pre.tabIndex=0;pane.append(h,pre);}
     previewPrompt();
   }
+  function addWorkPath(path) {const list=(draft.workDir||'').split(/[,;|]/).map(x=>x.trim()).filter(Boolean);const norm=x=>x.replace(/[\\/]+$/,'').toLowerCase();if(!list.some(x=>norm(x)===norm(path)))list.push(path);draft.workDir=list.join(',');if(active==='General')render();}
   function render() {
     const pane=$('settingsPane'); pane.replaceChildren();
     document.querySelectorAll('#settingsTabs button').forEach(b=>{b.classList.toggle('on',b.textContent===active); b.setAttribute('aria-selected',b.textContent===active);});
     const h=document.createElement('h2');h.textContent=active;pane.append(h);
     for(const spec of groups[active]) field(spec,pane);
     if(active==='Prompt') renderPrompt(pane);
-    if(active==='General') button('Add working folder…',()=>send({cmd:'pickDir'}),pane);button('Clear folders',()=>{draft.workDir='';render();},pane);
+    if(active==='General') {
+      const h=document.createElement('h3');h.textContent='Workspace and drives';pane.append(h);
+      const info=document.createElement('p');info.className='muted';info.textContent='Choose an accessible drive or browse to a folder. The first entry is the starting folder. Save settings to apply.';pane.append(info);
+      const row=document.createElement('div');row.className='row';pane.append(row);
+      const select=document.createElement('select');select.id='workspaceDrive';select.setAttribute('aria-label','Available drives');
+      const empty=document.createElement('option');empty.value='';empty.textContent='Choose a drive';select.append(empty);
+      for(const drive of drives){const opt=document.createElement('option');opt.value=drive.path;opt.textContent=drive.path+' - '+drive.kind+(drive.ready?'':' (not ready)');opt.disabled=!drive.ready;select.append(opt);}row.append(select);
+      button('Add drive',()=>{if(select.value)addWorkPath(select.value);},row);
+      button('Refresh drives',()=>send({cmd:'workspaceDrives'}),row);
+      button('Add working folder...',()=>send({cmd:'pickDir'}),pane);
+      button('Clear folders',()=>{draft.workDir='';render();},pane);
+    }
     if(active==='Claude'||active==='Codex') button('Browse executable',()=>send({cmd:'pickFile',key:active.toLowerCase()+'Path',title:'Choose executable',filter:'Executables|*.exe|All files|*.*'}),pane);
     if(active==='Commands') {const p=document.createElement('p');p.className='muted';p.textContent='Run !dir or !git status in the shared folder. Shortcuts: /new, /export, /stop, /settings, /claude, /codex, /deepseek, /grok, /all, /both. CLI arguments and environment settings are applied on the next assistant turn.';pane.append(p);}
     if(active==='Grok') { const p=document.createElement('p');p.className='muted';p.textContent='Backup assistant using an xAI-compatible chat endpoint. Direct participation and automatic fallback are separate switches. Model names depend on your account or local server. Claude and Codex remain the primary assistants.';pane.append(p); }
@@ -196,7 +208,7 @@ window.studioSettings = (() => {
     }
     for(const specs of Object.values(groups)) for(const [key,title,type,min,max] of specs) if(type==='number'&&(!Number.isInteger(get(key))||get(key)<min||get(key)>max))throw Error(title+' must be between '+min+' and '+max+'.');
   }
-  function open() {draft={retryOnError:0,retryDelaySec:5,handoffEnabled:true,resumeHistory:30,deepSeekMaxTokens:0,grokEnabled:false,grokAutoReply:false,grokFallback:false,grokFallbackOn:'any',grokApiKey:'',grokBaseUrl:'https://api.x.ai/v1',grokModel:'',grokMaxTokens:0,grokShowReasoning:false,grokSystemExtra:'',...structuredClone(current)};draft.ui={...defaults,...draft.ui};servers=structuredClone(draft.mcpServers||[]);$('modal').classList.remove('hidden');$('settingsSearch').value='';$('settingsError').textContent='';render();send({cmd:'runtimeInfo'});$('bClose').focus();}
+  function open() {draft={retryOnError:0,retryDelaySec:5,handoffEnabled:true,resumeHistory:30,deepSeekMaxTokens:0,grokEnabled:false,grokAutoReply:false,grokFallback:false,grokFallbackOn:'any',grokApiKey:'',grokBaseUrl:'https://api.x.ai/v1',grokModel:'',grokMaxTokens:0,grokShowReasoning:false,grokSystemExtra:'',...structuredClone(current)};draft.ui={...defaults,...draft.ui};servers=structuredClone(draft.mcpServers||[]);$('modal').classList.remove('hidden');$('settingsSearch').value='';$('settingsError').textContent='';render();send({cmd:'runtimeInfo'});send({cmd:'workspaceDrives'});$('bClose').focus();}
   function close() {$('modal').classList.add('hidden');$('input').focus();}
   function init() {
     $('modal').innerHTML='<div class="dlg studio-dlg" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><div class="dlg-h"><span id="settingsTitle">XenoStudio settings</span><button class="x" id="bClose" aria-label="Close settings">✕</button></div><input id="settingsSearch" type="search" placeholder="Find a setting across all categories" aria-label="Search settings"><div class="settings-layout"><nav id="settingsTabs" role="tablist" aria-label="Settings categories"></nav><div id="settingsPane" class="dlg-b"></div></div><div id="settingsError" role="alert"></div><div class="dlg-f"><button class="btn sec" id="bSetup">Setup tools and sign-in</button><button class="btn sec" id="bCancel">Cancel</button><button class="btn" id="bSave">Save settings</button></div></div>';
@@ -215,7 +227,8 @@ window.studioSettings = (() => {
       $('promptPreviewStatus').textContent='Preview for '+d.id+' using the current unsaved settings.';
       previewPending=null;
     }
-    if(d.type==='pickedDir') {const list=(draft.workDir||'').split(/[,;|]/).map(x=>x.trim()).filter(Boolean);if(!list.some(x=>x.toLowerCase()===d.path.toLowerCase()))list.push(d.path);draft.workDir=list.join(',');if(active==='General')render();}
+    if(d.type==='workspaceDrives') {drives=d.drives||[];if(active==='General'&&!$('modal').classList.contains('hidden'))render();}
+    if(d.type==='pickedDir') addWorkPath(d.path);
     if(d.type==='pickedFile'&&['claudePath','codexPath'].includes(d.key)){draft[d.key]=d.path;render();}
     if(d.type==='mcpImport') {try{captureMcp();let count=0;for(const s of d.servers||[])if(!servers.some(x=>x.name===s.name)){servers.push(s);count++;}active='MCP';render();$('settingsError').textContent=count+' servers added to draft. Save to apply.';}catch(e){$('settingsError').textContent=e.message;}}
     if(d.type==='runtime') {window.studioRuntime=JSON.stringify({claude:d.claude,codex:d.codex},null,2);if($('runtimeDetails'))$('runtimeDetails').textContent=window.studioRuntime;}

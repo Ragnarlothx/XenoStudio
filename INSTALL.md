@@ -75,3 +75,8 @@ Download the new zip and unzip it **over** the old folder (keep `data\`), or unz
 | An MCP server fails to add | The error shows the server's last output. Check its "Needs" item in step 1 is installed. |
 | Codex can't write files | **Settings → Codex → Sandbox**: choose *workspace-write*. |
 | Something else | `data\crash.log` has details. |
+
+
+## Workspace and drives (1.5.3)
+
+In Settings ? General ? Workspace and drives, choose an available drive and click **Add drive**, or use **Add working folder** to choose a directory, including accessible network folders. Local, USB, removable and mapped network drives are detected on the user?s computer. Unavailable drives are disabled; reconnect and use Refresh drives. Multiple entries are supported; the first is the starting folder. Save settings to apply. Windows permissions and the selected assistant access mode still apply. No developer drive list, local settings or credentials are included in the download.

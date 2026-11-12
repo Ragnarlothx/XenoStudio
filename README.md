@@ -147,3 +147,8 @@ pictures and snapshots.
 | `_dev/` | Packaging, signing and change-notes scripts |
 
 Third-party: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Full history: *XenoStudio Change Notes.pdf*.
+
+
+## Workspace and drives (1.5.3)
+
+In Settings ? General ? Workspace and drives, choose an available drive and click **Add drive**, or use **Add working folder** to choose a directory, including accessible network folders. Local, USB, removable and mapped network drives are detected on the user?s computer. Unavailable drives are disabled; reconnect and use Refresh drives. Multiple entries are supported; the first is the starting folder. Save settings to apply. Windows permissions and the selected assistant access mode still apply. No developer drive list, local settings or credentials are included in the download.
