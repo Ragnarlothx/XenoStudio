@@ -5,6 +5,7 @@ window.studioSettings = (() => {
   let current = {}, draft = {}, servers = [], drives = [], active = 'General';
   let promptDefaults = {template:'',footer:'',placeholders:[]}, promptFocus = 'promptTemplate', previewId = 'claude', previewPending = null;
   const plugins={servers:null,node:false,uv:false,loading:false,busy:null,log:[],status:''};
+  const installation={items:[],busy:false,status:'',installAfterScan:false};
   const groups = {
     General: [
       ['userName','Your display name'], ['xenoEditPath','XenoEdit executable path (blank = auto-detect)'], ['workDir','Shared working folder (several allowed: D:\\Projects,E:\\Work - the first is where the AIs start)'],
@@ -16,6 +17,14 @@ window.studioSettings = (() => {
       ['handoffEnabled','Allow assistants to hand off with @mentions','check'],
       ['resumeHistory','Recent messages to resend after a session restart','number',1,500],
       ['autoExport','Automatically export chats','check'], ['systemExtra','Instructions for both assistants','area']
+    ],
+    Installation: [
+      ['claudePath','Claude Code executable (blank = auto-detect)'],
+      ['codexPath','Codex executable (blank = auto-detect)'],
+      ['xenoEditPath','XenoEdit executable (blank = auto-detect)'],
+      ['toolSearchFolders','Additional installed tool folders (absolute paths, one per line)','area'],
+      ['claudeUseBundled','Prefer bundled Claude Code when available','check'],
+      ['codexUseBundled','Prefer bundled Codex when available','check']
     ],
     Claude: [
       ['claudeEnabled','Enable Claude','check'], ['claudeUseBundled','Use pinned runtime\\claude.exe','check'],
@@ -181,6 +190,14 @@ window.studioSettings = (() => {
       const list=document.createElement('datalist');list.id='deepseekModels';for(const name of ['deepseek-chat','deepseek-reasoner']){const o=document.createElement('option');o.value=name;list.append(o);}pane.append(list);
       const p=document.createElement('p');p.className='muted';p.textContent='Backup assistant. Claude and Codex are the primary participants. Uses your API account or a compatible local server. No Pro subscription is required by this app. Direct participation and automatic fallback are separate switches. Configure an endpoint before enabling either. For Ollama, use http://localhost:11434/v1 and the name of a model you have installed.';pane.append(p);
     }
+    if(active==='Installation') {
+      const note=document.createElement('p');note.className='muted';note.textContent='Point to installed tools here. Add the folders containing node/npm/npx, Git, uv/uvx or other required tools. Blank executable fields use auto-detection. Vendor installers choose their own destination; these settings do not move programs. Checking or installing saves the current settings first.';pane.append(note);
+      for(const [key,label] of [['claudePath','Claude Code'],['codexPath','Codex'],['xenoEditPath','XenoEdit']])button('Browse '+label,()=>send({cmd:'pickFile',key,title:'Choose '+label,filter:'Executables|*.exe;*.cmd|All files|*.*'}),pane);
+      button('Add tool folder',()=>send({cmd:'pickToolFolder'}),pane);
+      button('Check saved paths',()=>checkInstallation(false),pane);
+      button('Install missing components',()=>checkInstallation(true),pane);
+      const result=document.createElement('section');result.id='installationResults';pane.append(result);paintInstallation();
+    }
     if(active==='MCP') renderMcp(pane);
     if(active==='Runtime') {
       const p=document.createElement('p');p.textContent='Pinned CLIs stay in runtime\\ until you choose to replace them with the installed versions. Account sign-in uses each CLI’s own authentication.';pane.append(p);
@@ -192,6 +209,10 @@ window.studioSettings = (() => {
       const meta=document.createElement('p');meta.className='muted';meta.textContent=window.studioMeta||'';pane.append(meta);
     }
   }
+  function checkInstallation(install) {
+    if(installation.busy)return;validate();draft.mcpServers=servers;send({cmd:'saveSettings',settings:draft});installation.busy=true;installation.installAfterScan=install;installation.status='Checking installed tools and sign-ins...';send({cmd:'setupScan',rid:'installation-path-check'});paintInstallation();
+  }
+  function paintInstallation(){const root=$('installationResults');if(!root)return;root.replaceChildren();const p=document.createElement('p');p.setAttribute('role','status');p.textContent=installation.status;root.append(p);for(const item of installation.items){const row=document.createElement('p');row.textContent=(item.ok?'OK: ':'Missing / review: ')+item.name+' - '+(item.detail||item.status);root.append(row);if(!item.ok&&item.url&&item.actions?.includes('open'))button('Get '+item.name,()=>send({cmd:'openUrl',url:item.url}),root);}}
   function paintPlugins() {
     const root=$('mcpPlugins');if(!root)return;root.replaceChildren();
     const title=document.createElement('h3');title.textContent='MCP add-ons';root.append(title);
@@ -234,6 +255,7 @@ window.studioSettings = (() => {
     });
   }
   function validate() {
+    for(const path of (draft.toolSearchFolders||'').split(/[\r\n;]+/).map(x=>x.trim().replace(/^"|"$/g,'')).filter(Boolean))if(!/^(?:[a-z]:[\\/]|\\\\|%[^%]+%[\\/])/i.test(path))throw Error('Tool folders must be absolute paths, one per line.');
     captureMcp();
     for(const [prefix,name] of [['deepSeek','DeepSeek'],['grok','Grok']]) if(draft[prefix+'Enabled']||draft[prefix+'Fallback']) {let url;try{url=new URL(draft[prefix+'BaseUrl']);}catch{throw Error('Enter a valid '+name+' endpoint.');}if(!['http:','https:'].includes(url.protocol))throw Error(name+' endpoint must use HTTP or HTTPS.');if(!draft[prefix+'Model']?.trim())throw Error('Enter a '+name+' model.');}
     const names=new Set();
@@ -257,6 +279,11 @@ window.studioSettings = (() => {
     $('modal').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}if(e.key==='Tab'){const nodes=[...$('modal').querySelectorAll('button,input,textarea,select')].filter(n=>n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   }
   function receive(d) {
+    if(d.type==='pickedToolFolder'){const paths=(draft.toolSearchFolders||'').split(/[\r\n;]+/).map(x=>x.trim()).filter(Boolean);if(!paths.some(x=>x.toLowerCase()===d.path.toLowerCase()))paths.push(d.path);draft.toolSearchFolders=paths.join('\n');if(active==='Installation')render();}
+    if(d.type==='setupScan'&&d.rid==='installation-path-check'){if(d.ok){installation.items=d.data.items||[];const ids=installation.items.filter(x=>x.group!=='login'&&!x.ok&&x.actions?.includes('install')).map(x=>x.id);if(installation.installAfterScan&&ids.length){installation.status='Waiting for confirmation / installing missing tools...';send({cmd:'setupInstall',rid:'installation-path-install',ids});}else{installation.busy=false;installation.status=installation.installAfterScan?'No automatically installable components are missing. Use Setup for sign-in or manual installers.':'Paths checked. Use Setup for sign-in if needed.';}}else{installation.busy=false;installation.status=d.error||'Path check failed.';}installation.installAfterScan=false;paintInstallation();}
+    if(d.type==='setupInstall'&&d.rid==='installation-path-install'){installation.busy=false;installation.status=d.ok?'Installation finished. Check saved paths to verify all tools.':d.cancelled?'Installation cancelled.':d.error||'Installation failed.';if(d.ok)installation.items=d.data.items||installation.items;paintInstallation();}
+    if(d.type==='setupLog'&&installation.busy){installation.status=String(d.line||'').replace(/(?:Bearer\s+|sk-|ghp_|github_pat_)[A-Za-z0-9_.-]+/gi,'[redacted]');paintInstallation();}
+
     if(d.type==='mcpCatalog'&&d.rid==='mcp-plugin-catalog'){plugins.loading=false;if(d.ok){plugins.servers=d.data.servers||[];plugins.node=!!d.data.node;plugins.uv=!!d.data.uv;}else plugins.status=d.error||'Could not load catalog.';paintPlugins();}
     if(d.type==='setupLog'&&plugins.busy&&d.id==='mcp:'+plugins.busy){plugins.log.push(String(d.line||'').replace(/(?:Bearer\s+|sk-|ghp_|github_pat_)[A-Za-z0-9_.-]+/gi,'[redacted]'));plugins.log=plugins.log.slice(-100);const log=$('mcpPluginLog');if(log){log.textContent=plugins.log.join('\n');log.scrollTop=log.scrollHeight;}}
     if(d.type==='mcpInstall'&&d.rid==='mcp-plugin-'+plugins.busy){if(d.ok){plugins.servers=d.data.servers||plugins.servers;plugins.status='Server enabled. '+d.data.tools+' tools detected.';}else plugins.status=d.error||'Server was not added.';plugins.busy=null;paintPlugins();}
@@ -274,7 +301,7 @@ window.studioSettings = (() => {
     }
     if(d.type==='workspaceDrives') {drives=d.drives||[];if(active==='General'&&!$('modal').classList.contains('hidden'))render();}
     if(d.type==='pickedDir') addWorkPath(d.path);
-    if(d.type==='pickedFile'&&['claudePath','codexPath'].includes(d.key)){draft[d.key]=d.path;render();}
+    if(d.type==='pickedFile'&&['claudePath','codexPath','xenoEditPath'].includes(d.key)){draft[d.key]=d.path;render();}
     if(d.type==='mcpImport') {try{captureMcp();let count=0;for(const s of d.servers||[])if(!servers.some(x=>x.name===s.name)){servers.push(s);count++;}active='MCP';render();$('settingsError').textContent=count+' servers added to draft. Save to apply.';}catch(e){$('settingsError').textContent=e.message;}}
     if(d.type==='runtime') {window.studioRuntime=JSON.stringify({claude:d.claude,codex:d.codex},null,2);if($('runtimeDetails'))$('runtimeDetails').textContent=window.studioRuntime;}
   }

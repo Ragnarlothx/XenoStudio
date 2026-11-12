@@ -44,17 +44,29 @@ namespace XenoStudio
     {
         // ------------------------------------------------------------------------------------- PATH helpers
         /// <summary>Installers update PATH in the registry; pull those changes into this process so new tools are found without a restart.</summary>
+        static readonly object pathGate = new();
+        static readonly string inheritedPath = Environment.GetEnvironmentVariable("Path") ?? "";
+        static string[] toolFolders = Array.Empty<string>(), previousToolFolders = Array.Empty<string>();
+        public static void ConfigureToolFolders(string folders)
+        {
+            lock (pathGate) toolFolders = (folders ?? "").Split(new[] { '\r', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(x => Environment.ExpandEnvironmentVariables(x.Trim('"'))).Where(Path.IsPathRooted).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            RefreshPath();
+        }
         public static void RefreshPath()
         {
             try
             {
-                var parts = new List<string>();
+                lock (pathGate) {
+                var parts = new List<string>(inheritedPath.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                 foreach (var t in new[] { EnvironmentVariableTarget.Machine, EnvironmentVariableTarget.User, EnvironmentVariableTarget.Process })
-                    parts.AddRange((Environment.GetEnvironmentVariable("Path", t) ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    parts.AddRange((Environment.GetEnvironmentVariable("Path", t) ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(x => t != EnvironmentVariableTarget.Process || !previousToolFolders.Contains(x, StringComparer.OrdinalIgnoreCase)));
                 var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 parts.Add(Path.Combine(home, ".local", "bin"));                                         // Claude Code native installer, uv
                 parts.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm"));   // npm -g
-                Environment.SetEnvironmentVariable("Path", string.Join(";", parts.Select(Environment.ExpandEnvironmentVariables).Distinct(StringComparer.OrdinalIgnoreCase)));
+                Environment.SetEnvironmentVariable("Path", string.Join(";", toolFolders.Concat(parts.Select(Environment.ExpandEnvironmentVariables)).Distinct(StringComparer.OrdinalIgnoreCase)));
+                previousToolFolders = toolFolders.ToArray();
+                }
             }
             catch { }
         }
@@ -152,7 +164,7 @@ namespace XenoStudio
             var ver = await Version(exe);
             var it = new SetupItem { Id = id, Group = "tool", Name = name, Why = why, Required = false, Ok = ver != null, Url = url };
             it.Status = it.Ok ? "ok" : "missing";
-            it.Detail = it.Ok ? ver : "Not installed";
+            it.Detail = it.Ok ? ver + " | " + exe : "Not installed";
             if (!it.Ok) it.Actions.Add(HasWinget ? "install" : "open");
             return it;
         }

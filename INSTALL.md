@@ -90,3 +90,10 @@ By hand: download the new zip and unzip it **over** the old folder (keep `data\`
 ## MCP add-ons catalog
 
 Open **Settings > MCP > MCP add-ons** to browse Desktop Commander (files and terminal), Windows-MCP (desktop control), Playwright (browser automation) and Fetch (web content). Cards show the server description, requirements and enabled status. **Add server** downloads if needed, tests the server and saves/enables it immediately; **Test and enable** checks an existing entry. Installation activity appears below the catalog. If Node.js or uv is missing, open **Install requirements / open Setup** and approve the required installer there, then refresh the catalog. Custom servers and Import remain below the catalog; manual configuration edits still require Save settings. Each server runs locally with the permissions of its process.
+
+
+## Installation paths and one-click installation
+
+Open **Settings > Installation** to select the Claude Code, Codex and XenoEdit executables or leave them blank for auto-detection. **Add tool folder** adds an installed dependency directory to the additional tool folders list, one absolute path per line (for example the folder containing node/npm/npx, Git or uv/uvx). These directories are searched first inside XenoStudio; your Windows user/system PATH is not changed. Clear the list to return to normal detection. Existing bundled-CLI preference switches remain available.
+
+**Check saved paths** saves the current settings and checks installed tools and sign-in status. **Install missing components** saves, checks, then requests confirmation before installing missing supported tools. If automatic installation is unavailable, a Get installer button opens the official download page. Installer destinations follow each vendor installer; choosing paths here does not relocate applications. Sign-in stays in Setup and uses your own accounts. Local path settings are not bundled in public downloads.

@@ -134,6 +134,7 @@ namespace XenoStudio
             var src = File.Exists(SettingsFile) ? SettingsFile : File.Exists(Paths.OldXenoDuoSettings) ? Paths.OldXenoDuoSettings : null;
             try { if (src != null) S = JsonSerializer.Deserialize<Settings>(File.ReadAllText(src), J) ?? new(); } catch { S = new(); }
             S.Clamp();
+            Setup.ConfigureToolFolders(S.ToolSearchFolders);
             try { mcpRefreshed = S.RefreshStaleMcp(); } catch (Exception ex) { CrashLog.Write("mcp refresh", ex); }
             if (src != SettingsFile || mcpRefreshed.Count > 0) SaveSettings();
             ThemeChrome.Apply(this, web, S.Theme);   // title bar + background before the page paints, so there's no grey flash
@@ -269,6 +270,7 @@ namespace XenoStudio
                 case "saveSettings":
                     S = n["settings"].Deserialize<Settings>(J) ?? S;
                     S.Clamp();
+                    Setup.ConfigureToolFolders(S.ToolSearchFolders);
                     SaveSettings();
                     ThemeChrome.Apply(this, web, S.Theme);
                     Post(new { type = "settings", settings = S, exe = ExeInfo() });
@@ -286,7 +288,7 @@ namespace XenoStudio
                     }
                     break;
                 case "resetSettings":
-                    S = new Settings(); S.Clamp(); SaveSettings();
+                    S = new Settings(); S.Clamp(); Setup.ConfigureToolFolders(S.ToolSearchFolders); SaveSettings();
                     ThemeChrome.Apply(this, web, S.Theme);
                     Post(new { type = "settings", settings = S, exe = ExeInfo() });
                     break;
@@ -307,6 +309,10 @@ namespace XenoStudio
                     catch { }
                     break;
                 case "exportSettings": ExportSettings(); break;
+                case "pickToolFolder":
+                    var toolDlg = new Microsoft.Win32.OpenFolderDialog { Title = "Choose installed tool directory" };
+                    if (toolDlg.ShowDialog(this) == true) Post(new { type = "pickedToolFolder", path = toolDlg.FolderName });
+                    break;
                 case "pickFile":
                     var fd = new Microsoft.Win32.OpenFileDialog { Title = (string)n["title"] ?? "Choose file", Filter = (string)n["filter"] ?? "All files|*.*" };
                     if (fd.ShowDialog(this) == true) Post(new { type = "pickedFile", key = (string)n["key"], path = fd.FileName });

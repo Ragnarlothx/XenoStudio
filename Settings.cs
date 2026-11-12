@@ -55,6 +55,7 @@ namespace XenoStudio
         // ---- Claude
         public bool ClaudeEnabled { get; set; } = true;
         public bool ClaudeUseBundled { get; set; } = true;       // runtime\claude.exe next to XenoStudio.exe
+        public string ToolSearchFolders { get; set; } = ""; // optional tool directories, one per line
         public string ClaudePath { get; set; } = "";
         public string ClaudeModel { get; set; } = "";
         public string ClaudeFallbackModel { get; set; } = "";
