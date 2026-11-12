@@ -227,13 +227,71 @@ You are responsible for how you use XenoStudio, the permissions you grant, and t
 Xeno provides this program **as is**, without warranties of any kind. To the fullest extent permitted by applicable law, Xeno is not responsible for loss of data, damage, unauthorized activity, or other consequences arising from use or misuse of this program, AI-generated output, or connected tools. This disclaimer does not exclude rights or liabilities that cannot legally be excluded.
 
 
-## MCP add-ons catalog
+## Settings quick guide
 
-Open **Settings > MCP > MCP add-ons** to browse Desktop Commander (files and terminal), Windows-MCP (desktop control), Playwright (browser automation) and Fetch (web content). Cards show the server description, requirements and enabled status. **Add server** downloads if needed, tests the server and saves/enables it immediately; **Test and enable** checks an existing entry. Installation activity appears below the catalog. If Node.js or uv is missing, open **Install requirements / open Setup** and approve the required installer there, then refresh the catalog. Custom servers and Import remain below the catalog; manual configuration edits still require Save settings. Each server runs locally with the permissions of its process.
-
+| Page | What to configure | When changes apply |
+| --- | --- | --- |
+| General | Work folders, display name, shared AI instructions and turn behavior | Save settings; agent options affect subsequent turns |
+| Installation | Existing executable locations, dependency folders and install checks | Save settings, or use Check saved paths / Install missing components |
+| Claude / Codex | Model, access level, instructions, CLI options and environment | Save settings; applies to subsequent turns |
+| MCP | Add-on catalog, installed server switches and custom connections | Catalog Add/Test saves immediately; manual server edits require Save settings |
+| Runtime | App update check, release notes, pinned CLI maintenance and local data shortcuts | Follow each action's prompt |
+| Appearance / Chat / Reading | Themes, text size, layout and conversation display | Save settings |
 
 ## Installation paths and one-click installation
 
-Open **Settings > Installation** to select the Claude Code, Codex and XenoEdit executables or leave them blank for auto-detection. **Add tool folder** adds an installed dependency directory to the additional tool folders list, one absolute path per line (for example the folder containing node/npm/npx, Git or uv/uvx). These directories are searched first inside XenoStudio; your Windows user/system PATH is not changed. Clear the list to return to normal detection. Existing bundled-CLI preference switches remain available.
+Use auto-detection first. Set a custom location when a tool is installed somewhere XenoStudio cannot find.
 
-**Check saved paths** saves the current settings and checks installed tools and sign-in status. **Install missing components** saves, checks, then requests confirmation before installing missing supported tools. If automatic installation is unavailable, a Get installer button opens the official download page. Installer destinations follow each vendor installer; choosing paths here does not relocate applications. Sign-in stays in Setup and uses your own accounts. Local path settings are not bundled in public downloads.
+1. Open **Settings > Installation**.
+2. Use **Browse Claude Code**, **Browse Codex** or **Browse XenoEdit** to select an existing executable. Leave a field blank for automatic discovery. An explicit existing executable takes precedence over the bundled-CLI preference.
+3. For dependencies, click **Add tool folder** and select the directory containing the tool. Add each directory on its own line. For example, Node's directory should contain node/npm/npx, and uv's directory should contain uv/uvx. These are installed program folders, not project folders.
+4. Click **Check saved paths**. This saves the current settings draft and checks installed tools and Claude/Codex sign-in status. The results identify found and missing components.
+5. If needed, click **Install missing components**. It saves and scans first, then displays a native confirmation listing supported missing tools before installation. If automatic installation is unavailable, **Get installer** opens the official download page.
+6. Complete the vendor installer, then check again. Use **Setup tools and sign-in** for browser sign-in or the existing login-skip options.
+
+The tool folders take priority within XenoStudio and are inherited by child tools. They do **not** change the Windows user/system PATH. Clear the list and save to remove those overrides. Installers choose destinations according to their own supported options; selecting a path here does not relocate an application.
+
+**Work folders are separate.** Choose your projects under **Settings > General > Workspace and drives**. The first work folder is where assistant processes start; additional work folders are passed to supported assistants. Windows permissions and each assistant's access mode still apply.
+
+## MCP add-ons catalog
+
+Open **Settings > MCP > MCP add-ons**. These add-ons give the assistants tools; they do not replace your AI model or account.
+
+| Add-on | What it provides | Requirement | Example request after enabling |
+| --- | --- | --- | --- |
+| Desktop Commander | Files, search, terminal processes and edits | Node.js / npx | "Find TODO comments in my selected project." |
+| Windows-MCP | Desktop screenshots, windows, clicks and typing | uv / uvx | "Inspect the open app and explain the error dialog." |
+| Playwright browser | Browser navigation, page inspection and web-app testing | Node.js / npx | "Check my local web page for layout problems." |
+| Fetch | Fetch web pages as readable content | uv / uvx | "Read this documentation URL and summarize it." |
+
+### Add an MCP tool
+
+1. Review the card's description, requirement and enabled state.
+2. If a requirement is missing, choose **Install requirements / open Setup** and approve the required installation there. Return to MCP and click **Refresh catalog**.
+3. Click **Add server**. The existing backend downloads the package if necessary, starts it, tests the MCP handshake and tool list, then saves and enables the server. It is active only after the test succeeds.
+4. Expand **Add-on installation activity** to inspect progress or an error. First-time downloads can take several minutes. **Test and enable** reruns the check for an existing catalog entry.
+5. Under **Configured servers and custom connections**, review **Enabled**, **Available to Claude** and **Available to Codex**. Save manual changes. The configured assistants receive these tools on subsequent turns.
+
+**Catalog Add/Test saves immediately**, even if you later cancel Settings. Manual edits to server configuration still require **Save settings**. Retesting a catalog entry reapplies its catalog command configuration; use a separate custom server entry when you need a different launch command.
+
+### Existing or custom servers
+
+- **Import installed servers** imports configurations found on the recipient's computer into the settings draft. Review and save them.
+- **Add server** below the catalog creates a custom connection. For stdio, enter its command, JSON argument array and any required environment object. HTTP connections use the URL and headers fields. Follow that server's own setup instructions.
+- Disable a server by clearing **Enabled** and saving. Removing its configuration does not necessarily uninstall packages cached by npm or uv.
+- Use your own service credentials where a custom server needs them. Do not share settings, headers or environment values containing secrets.
+
+MCP servers run as local programs under the user's permissions. Tool availability is not a guarantee that an AI will invoke a particular tool on every request. Review access levels and instructions before enabling desktop or filesystem control.
+
+## Common setup problems
+
+| Symptom | What to check |
+| --- | --- |
+| Add is disabled | Install the named Node.js or uv requirement, then refresh the catalog |
+| Tool not found after installation | Check its installed directory, add that directory under Installation, then check again |
+| Server test failed | Read the activity log; verify runtime requirements, internet access and the command's upstream instructions |
+| AI cannot see an enabled server | Check the server's Claude/Codex switches, save manual changes and start another turn |
+| Login is missing | Open Setup and sign in through the CLI's browser flow, or use the explicit skip option if appropriate |
+| Changes did not apply | Save settings; catalog Add/Test is the exception because it saves immediately |
+
+All downloads use the recipient's own accounts and local configuration. Public packages exclude local app data, credentials, sign-in sessions and personal installation paths. See [INSTALL.md](INSTALL.md) for initial setup and updating.
