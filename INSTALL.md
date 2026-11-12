@@ -61,7 +61,9 @@ Extra tools the AIs can use. **Add** downloads the server, test-starts it, and o
 Lists anything still missing. Click **Finish setup**.
 
 ## 4. First chat
-Open **Settings → General** to choose your work folder(s) and permissions, then type a message. With **Send to: Auto**
+Open **Settings → General** to choose your work folder(s) and permissions, then type a message.
+**Before giving the AIs full access, read [Access levels and rules for the AIs](README.md#access-levels-and-rules-for-the-ais)**
+and put your rules in **Settings → General → Instructions for both assistants**. With **Send to: Auto**
 both AIs answer. See the README for a short walkthrough.
 
 ## Workspace and drives

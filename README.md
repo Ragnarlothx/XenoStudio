@@ -126,6 +126,60 @@ The bundled CLIs (`runtime\*.exe`) aren't in this repo. Without them XenoStudio 
 
 ---
 
+## Access levels and rules for the AIs
+
+Claude and Codex are real agents: depending on the access you give them, they can read files, change files and run
+commands on your PC **without asking first**. XenoStudio runs them headless, so there are no "Allow?" pop-ups
+mid-turn; the access level you pick in Settings *is* the permission.
+
+### Access levels
+
+| Setting | Level | What the AI can do |
+|---|---|---|
+| **Settings → Claude → Permissions** | `read` | Read and search files. Anything that needs approval (edits, commands) is refused. |
+| | `edit` | Also create and edit files. Shell commands still need to be allowed (Allowed tools). |
+| | `full` | Everything, with no approval: edit or delete any file it can reach, run any command, install software, use the network and every MCP tool. |
+| **Settings → Codex → Access** | `read-only` | Read files and run commands that don't change anything. |
+| | `workspace-write` | Write inside your work folders only. |
+| | `danger-full-access` | No sandbox: any file and any command, anywhere on the PC. |
+
+Start with **read** / **read-only**, move to **edit** / **workspace-write** for coding, and use **full** /
+**danger-full-access** only when you want the AIs to manage your system: installing tools, working across drives, running
+builds and scripts. MCP servers you add (for example Windows-MCP, which can click and type in any app) give the AIs
+even more reach, at whatever access level you chose.
+
+### Why rules matter at full access
+
+At full access nothing technical stops a mistake. An AI that misunderstands "clean up this folder" can delete the wrong
+one; a script can overwrite files; two AIs handing work to each other can repeat a change. AIs follow written instructions
+well, so the most important safety step is **telling them your rules**. XenoStudio gives them to the AIs in every chat:
+
+- **Settings → General → Instructions for both assistants**: rules for both AIs.
+- **Settings → Claude → Claude instructions** and **Settings → Codex → Codex instructions**: rules for one AI.
+- **Settings → Claude → Blocked tools**: hard blocks Claude can't get around (for example `Bash(rm:*)`).
+
+Example rules to start from (edit to fit your PC):
+
+```text
+- Ask me before deleting, moving or overwriting anything outside the current project.
+- Never change Windows settings, the registry, drivers, security software or firewall rules.
+- Back up a file or folder before a large or risky change, and tell me where the backup is.
+- Don't install, uninstall or update software without asking first.
+- Stay inside my work folders unless I name another path.
+- Never read, print, copy or send passwords, API keys, tokens, browser data or sign-in files.
+- Don't upload, publish or send anything to the internet unless I ask.
+- Don't touch these folders: D:\Photos, E:\Backups
+- When you finish, list every file you changed.
+```
+
+Good habits on top of rules:
+- **Keep backups** of anything important (or use git), especially before handing the AIs a big job.
+- **Watch the change cards** under each reply. Click one to see exactly what changed.
+- Keep work folders to what the job needs. At full access the AIs can reach further, but the work folders tell them where to work.
+- **Stop** ends a turn at once if something looks wrong.
+
+---
+
 ## Your data
 
 Everything XenoStudio writes stays next to the exe in `data\`: settings, chats, attached pictures, edit snapshots, the
