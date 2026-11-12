@@ -97,7 +97,7 @@ Four themes: **Dark**, **Light**, **Cyberpunk** and **Hacker**. The Windows 11 t
 | ![Cyberpunk theme](docs/screenshots/theme-cyberpunk.png) | ![Hacker theme](docs/screenshots/theme-hacker.png) |
 
 ### App
-- **Several work folders** (`D:\Projects,E:\Work`): the first is where the AIs start, the rest are added for both.
+- **Workspace and drives**: work in any folder or drive on the PC (local, USB, mapped network). **Settings → General → Workspace and drives** lists the drives found (ones that aren't connected are greyed out), with **Add drive**, **Add working folder…** and **Refresh drives**. Several entries are allowed (`D:\Projects,E:\Work`): the first is where the AIs start, the rest are added for both.
 - **MCP servers**: one shared list for both AIs (stdio or http/sse), importable from your Claude and Codex configs; stale paths are repaired automatically when the Codex app updates.
 - **Single instance**: launching the exe again brings the open window forward. `XenoStudio.exe --send "message"` starts a chat.
 - Window position remembered; crash log in `data\crash.log`.
@@ -147,8 +147,3 @@ pictures and snapshots.
 | `_dev/` | Packaging, signing and change-notes scripts |
 
 Third-party: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Full history: *XenoStudio Change Notes.pdf*.
-
-
-## Workspace and drives (1.5.3)
-
-In Settings ? General ? Workspace and drives, choose an available drive and click **Add drive**, or use **Add working folder** to choose a directory, including accessible network folders. Local, USB, removable and mapped network drives are detected on the user?s computer. Unavailable drives are disabled; reconnect and use Refresh drives. Multiple entries are supported; the first is the starting folder. Save settings to apply. Windows permissions and the selected assistant access mode still apply. No developer drive list, local settings or credentials are included in the download.

@@ -64,6 +64,12 @@ Lists anything still missing. Click **Finish setup**.
 Open **Settings → General** to choose your work folder(s) and permissions, then type a message. With **Send to: Auto**
 both AIs answer. See the README for a short walkthrough.
 
+## Workspace and drives
+**Settings → General → Workspace and drives** lists the drives on your PC: local disks, USB and removable drives, and mapped
+network drives. Pick one and click **Add drive**, or **Add working folder…** to choose a specific folder (network folders work too).
+Drives that aren't connected are greyed out; reconnect them and click **Refresh drives**. You can add several; the first one is
+where the AIs start. Click **Save settings** to apply. Windows permissions and the access mode you chose for each AI still apply.
+
 ## Updating
 Download the new zip and unzip it **over** the old folder (keep `data\`), or unzip to a new folder and copy `data\` across.
 
@@ -75,8 +81,3 @@ Download the new zip and unzip it **over** the old folder (keep `data\`), or unz
 | An MCP server fails to add | The error shows the server's last output. Check its "Needs" item in step 1 is installed. |
 | Codex can't write files | **Settings → Codex → Sandbox**: choose *workspace-write*. |
 | Something else | `data\crash.log` has details. |
-
-
-## Workspace and drives (1.5.3)
-
-In Settings ? General ? Workspace and drives, choose an available drive and click **Add drive**, or use **Add working folder** to choose a directory, including accessible network folders. Local, USB, removable and mapped network drives are detected on the user?s computer. Unavailable drives are disabled; reconnect and use Refresh drives. Multiple entries are supported; the first is the starting folder. Save settings to apply. Windows permissions and the selected assistant access mode still apply. No developer drive list, local settings or credentials are included in the download.

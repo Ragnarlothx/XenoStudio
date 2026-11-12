@@ -18,6 +18,8 @@ If everything is already in place on first run, the app silently marks setup don
 | `setupInstall` | `{id}` or `{ids:[...]}` | `{items: SetupItem[]}` rescanned rows. The app shows a native Yes/No first listing everything it will install (prerequisites added automatically, e.g. Codex pulls in Node.js). `ok:false, cancelled:true` if the user says No. Can take minutes; stream `setupLog` lines meanwhile. One install at a time. |
 | `setupLogin` | `{id: "claude"\|"codex"}` | `{item}`: opens the CLI's own sign-in in a console window (it opens the browser). Replies when that window closes. |
 | `setupApiKey` | `{id: "claude"\|"codex", key}` | `{item}`. Claude: saved as ANTHROPIC_API_KEY in Claude's environment (stripped from settings exports). Codex: `codex login --with-api-key`. Use a password field; never echo the key. |
+| `setupSkipLogin` | `{id: "claude"\|"codex", skip}` | `{item}`. skip:true = the user says it's signed in another way: the item reports `ok:true, status:"skipped"` with action `unskip`, and start-up stops asking. skip:false undoes it. Saved as `skipLogin` in settings. |
+| `workspaceDrives` | | push `{type:"workspaceDrives", drives:[{path, kind, ready}]}`: kind = Fixed / Removable / Network / CDRom…; a drive that doesn't answer within 3 s is `ready:false` |
 | `setupDone` | | none (no reply); saves `setupDone:true` |
 | `mcpCatalog` | | `{servers: McpCatalogEntry[], node, uv}`: node/uv = whether npx/uvx are available |
 | `mcpInstall` | `{id}` | `{tools, servers}`: test-starts the server (downloads it the first time, up to ~4 min), adds or re-enables it in Settings → MCP. Error text includes the server's last output lines. |
@@ -25,7 +27,7 @@ If everything is already in place on first run, the app silently marks setup don
 ## Shapes
 ```
 SetupItem       { id, group: "tool"|"cli"|"login", name, why, required, ok, status: "ok"|"missing"|"warn",
-                  detail, actions: ("install"|"login"|"apikey"|"open")[], url }
+                  detail, actions: ("install"|"login"|"apikey"|"open"|"skip"|"unskip")[], url }     // status can also be "skipped"
 McpCatalogEntry { id, name, desc, needs: "node"|"uv", installed }
 ```
 Item ids: `node`, `git`, `uv`, `claude`, `codex`, `claude-login`, `codex-login`.

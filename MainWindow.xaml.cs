@@ -308,7 +308,19 @@ namespace XenoStudio
                     if (fd.ShowDialog(this) == true) Post(new { type = "pickedFile", key = (string)n["key"], path = fd.FileName });
                     break;
                 case "workspaceDrives":
-                    Post(new { type = "workspaceDrives", drives = DriveInfo.GetDrives().Select(d => new { path = d.Name, kind = d.DriveType.ToString(), ready = DriveReady(d) }).ToArray() });
+                    // off the UI thread, each drive checked in parallel with a time limit: an offline mapped network drive can
+                    // block IsReady for a long time and would otherwise freeze the window when Settings opens
+                    _ = Task.Run(async () =>
+                    {
+                        var checks = DriveInfo.GetDrives().Select(d => (d, ready: Task.Run(() => DriveReady(d)))).ToList();
+                        var all = Task.WhenAll(checks.Select(c => c.ready));
+                        await Task.WhenAny(all, Task.Delay(3000));
+                        Post(new { type = "workspaceDrives", drives = checks.Select(c => new
+                        {
+                            path = c.d.Name, kind = c.d.DriveType.ToString(),
+                            ready = c.ready.IsCompletedSuccessfully && c.ready.Result,
+                        }).ToArray() });
+                    });
                     break;
                 case "pickDir":
                     var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Shared working folder", InitialDirectory = S.PrimaryWorkDir };

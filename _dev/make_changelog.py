@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.2")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.4")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.2 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.4 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -113,6 +113,8 @@ story += [
                                                   "installs missing tools after a prompt, one-click tested MCP servers; .NET included in the download."],
         ["1.5.1", "2026-11-12", "Claude", "Code review fixes for the setup wizard, new INSTALL.md guide, download link in the README."],
         ["1.5.2", "2026-11-12", "Claude", "Skip option for sign-in: automatic when already signed in, or per account."],
+        ["1.5.3", "2026-11-12", "Codex", "Workspace and drives: pick any drive or folder on the PC, including USB and network drives."],
+        ["1.5.4", "2026-11-12", "Claude", "Review fixes: no freeze from offline network drives, docs cleaned up."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -422,6 +424,26 @@ story += [
         "<b>Check sign-in again</b> undoes it.",
         "Tested in a copy with no sign-ins: Skip, Check sign-in again and the automatic step skip all work.",
     ]),
+    P("v1.5.3 · 2026-11-12 · " + by("Codex"), s_h1),
+    P("Workspace and drives", s_h2),
+    *bullets([
+        "<b>Settings → General → Workspace and drives</b> lists every drive on the user's own PC: local disks, USB / removable "
+        "and mapped network drives. <b>Add drive</b> adds it to the work folders; <b>Add working folder…</b> picks a folder; "
+        "<b>Refresh drives</b> re-reads the list. Drives that aren't connected are shown but greyed out.",
+        "Several entries are allowed; the first is where the AIs start. Nothing about the developer's drives ships with the app.",
+        "Fixed: <b>Clear folders</b> appeared on every Settings page instead of only General.",
+    ]),
+    P("v1.5.4 · 2026-11-12 · " + by("Claude"), s_h1),
+    P("Review of 1.5.3 before updating GitHub", s_h2),
+    table([
+        ["Problem", "Fix"],
+        ["Listing drives ran on the window's thread. Checking a mapped network drive that's offline can take a long time, "
+         "which would freeze XenoStudio every time Settings opened.",
+         "Drives are checked in the background, all at once, with a 3-second limit; a drive that doesn't answer in time is shown as not ready."],
+        ["The drives section in README and INSTALL.md had damaged characters (arrows and apostrophes saved as \"?\") and sat at the end of the README.",
+         "Rewritten: a Workspace and drives item in the README's feature list and its own section in INSTALL.md."],
+        ["The setup bridge document didn't list the sign-in skip and drive requests.", code("docs\\SETUP-BRIDGE.md") + " updated."],
+    ], [3.2 * inch, W - 3.2 * inch]),
 ]
 
 # ---------------------------------------------------------------- files, backups, open items
@@ -479,6 +501,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.2", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.4", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
