@@ -22,7 +22,7 @@ Get-ChildItem dist -Force | Where-Object { $skipDirs -notcontains $_.Name } | Fo
     Copy-Item $_.FullName (Join-Path $stage $_.Name) -Recurse -Force
 }
 Get-ChildItem $stage -Recurse -Include *.pdb, *.xml | Remove-Item -Force
-Copy-Item README.txt $stage
+Copy-Item README.md $stage
 
 $suffix = if ($NoRuntime) { '-lite' } else { '' }
 $zip = Join-Path $root "release\XenoStudio-v$ver$suffix.zip"
