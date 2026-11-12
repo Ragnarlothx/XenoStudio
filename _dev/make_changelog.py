@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.7")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.8")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.7 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.8 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -488,6 +488,8 @@ story += [
 
 # ---------------------------------------------------------------- files, backups, open items
 story += [
+    P("v1.5.8 - MCP add-ons catalog - " + by("Codex"), s_h1),
+    *bullets(["Settings > MCP includes plugin-style cards for Desktop Commander, Windows-MCP, Playwright and Fetch.", "Cards show descriptions, runtime prerequisites and enabled status. Add downloads, tests and enables a server using the existing backend; progress appears in an activity log.", "Missing prerequisites lead to Setup. Custom configuration and Import remain available, with manual edits saved separately.", "Browser checks cover catalog rendering, installed states, missing requirements and setup navigation. Tests did not install software."]),
     P("Files changed", s_h1),
     table([
         ["File", "Version", "What changed"],
@@ -541,6 +543,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.7", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.8", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)

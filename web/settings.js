@@ -4,6 +4,7 @@ window.studioSettings = (() => {
   const send = data => window.chrome?.webview?.postMessage(data);
   let current = {}, draft = {}, servers = [], drives = [], active = 'General';
   let promptDefaults = {template:'',footer:'',placeholders:[]}, promptFocus = 'promptTemplate', previewId = 'claude', previewPending = null;
+  const plugins={servers:null,node:false,uv:false,loading:false,busy:null,log:[],status:''};
   const groups = {
     General: [
       ['userName','Your display name'], ['xenoEditPath','XenoEdit executable path (blank = auto-detect)'], ['workDir','Shared working folder (several allowed: D:\\Projects,E:\\Work - the first is where the AIs start)'],
@@ -191,7 +192,22 @@ window.studioSettings = (() => {
       const meta=document.createElement('p');meta.className='muted';meta.textContent=window.studioMeta||'';pane.append(meta);
     }
   }
+  function paintPlugins() {
+    const root=$('mcpPlugins');if(!root)return;root.replaceChildren();
+    const title=document.createElement('h3');title.textContent='MCP add-ons';root.append(title);
+    const note=document.createElement('p');note.className='muted';note.textContent='Optional tools for Claude and Codex. Add downloads and tests the server, then enables and saves it immediately. Manual server edits below still need Save settings.';root.append(note);
+    const refresh=button(plugins.loading?'Loading catalog...':'Refresh catalog',()=>{plugins.loading=true;send({cmd:'mcpCatalog',rid:'mcp-plugin-catalog'});paintPlugins();},root);refresh.disabled=plugins.loading||!!plugins.busy;
+    button('Install requirements / open Setup',()=>{close();window.studioSetup.open();},root).disabled=!!plugins.busy;
+    for(const entry of plugins.servers||[]){const card=document.createElement('div');card.className='mcp-plugin';root.append(card);const h=document.createElement('strong');h.textContent=entry.name;card.append(h);const p=document.createElement('p');p.textContent=entry.desc;card.append(p);const requires=document.createElement('p');requires.className='muted';const ready=entry.needs==='node'?plugins.node:plugins.uv;requires.textContent=(entry.installed?'Enabled':'Not enabled')+' | Requires '+(entry.needs==='node'?'Node.js / npx':'uv / uvx')+(ready?' (found)':' (install through Setup)');card.append(requires);
+      const add=button(plugins.busy===entry.id?'Adding / testing...':entry.installed?'Test and enable':'Add server',()=>{captureMcp();plugins.busy=entry.id;plugins.log=[];plugins.status='Downloading if needed and testing '+entry.name+'...';send({cmd:'mcpInstall',rid:'mcp-plugin-'+entry.id,id:entry.id});paintPlugins();},card);add.disabled=!!plugins.busy||!ready;
+    }
+    const status=document.createElement('p');status.id='mcpPluginStatus';status.setAttribute('role','status');status.textContent=plugins.status;root.append(status);
+    const details=document.createElement('details');details.open=!!plugins.busy;const summary=document.createElement('summary');summary.textContent='Add-on installation activity';const log=document.createElement('pre');log.id='mcpPluginLog';log.textContent=plugins.log.join('\n');details.append(summary,log);root.append(details);
+  }
   function renderMcp(pane) {
+    const pluginRoot=document.createElement('section');pluginRoot.id='mcpPlugins';pane.append(pluginRoot);paintPlugins();
+    if(!plugins.servers&&!plugins.loading){plugins.loading=true;send({cmd:'mcpCatalog',rid:'mcp-plugin-catalog'});paintPlugins();}
+    const manual=document.createElement('h3');manual.textContent='Configured servers and custom connections';pane.append(manual);
     const bar=document.createElement('div');bar.className='row';pane.append(bar);
     button('Add server',()=>{captureMcp();servers.push({name:'server-'+(servers.length+1),type:'stdio',command:'',args:[],url:'',env:{},headers:{},enabled:true,claude:true,codex:true});render();},bar);
     button('Import installed servers',()=>send({cmd:'importMcp'}),bar);
@@ -241,6 +257,11 @@ window.studioSettings = (() => {
     $('modal').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}if(e.key==='Tab'){const nodes=[...$('modal').querySelectorAll('button,input,textarea,select')].filter(n=>n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   }
   function receive(d) {
+    if(d.type==='mcpCatalog'&&d.rid==='mcp-plugin-catalog'){plugins.loading=false;if(d.ok){plugins.servers=d.data.servers||[];plugins.node=!!d.data.node;plugins.uv=!!d.data.uv;}else plugins.status=d.error||'Could not load catalog.';paintPlugins();}
+    if(d.type==='setupLog'&&plugins.busy&&d.id==='mcp:'+plugins.busy){plugins.log.push(String(d.line||'').replace(/(?:Bearer\s+|sk-|ghp_|github_pat_)[A-Za-z0-9_.-]+/gi,'[redacted]'));plugins.log=plugins.log.slice(-100);const log=$('mcpPluginLog');if(log){log.textContent=plugins.log.join('\n');log.scrollTop=log.scrollHeight;}}
+    if(d.type==='mcpInstall'&&d.rid==='mcp-plugin-'+plugins.busy){if(d.ok){plugins.servers=d.data.servers||plugins.servers;plugins.status='Server enabled. '+d.data.tools+' tools detected.';}else plugins.status=d.error||'Server was not added.';plugins.busy=null;paintPlugins();}
+    if(d.type==='settings'&&plugins.busy){const installed=(d.settings.mcpServers||[]).find(x=>x.name.toLowerCase()===plugins.busy.toLowerCase());if(installed){const i=servers.findIndex(x=>x.name.toLowerCase()===installed.name.toLowerCase());if(i<0)servers.push(structuredClone(installed));else servers[i]=structuredClone(installed);draft.mcpServers=servers;if(active==='MCP')render();}}
+
     if(d.type==='checkUpdate'){upd.state=d.ok?'':'Couldn’t check for updates: '+d.error;if(d.ok)upd.info=d.data;paintUpdate();}
     if(d.type==='updateAvailable'){upd.info=d.info;paintUpdate();}
     if(d.type==='updateProgress'){upd.state='Downloading… '+d.pct+'%';paintUpdate();}

@@ -225,3 +225,8 @@ Third-party: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Full history:
 You are responsible for how you use XenoStudio, the permissions you grant, and the actions taken by the AI assistants and connected tools. Use it only on systems and data you own or have permission to access. Review changes and keep backups, especially when granting full access.
 
 Xeno provides this program **as is**, without warranties of any kind. To the fullest extent permitted by applicable law, Xeno is not responsible for loss of data, damage, unauthorized activity, or other consequences arising from use or misuse of this program, AI-generated output, or connected tools. This disclaimer does not exclude rights or liabilities that cannot legally be excluded.
+
+
+## MCP add-ons catalog
+
+Open **Settings > MCP > MCP add-ons** to browse Desktop Commander (files and terminal), Windows-MCP (desktop control), Playwright (browser automation) and Fetch (web content). Cards show the server description, requirements and enabled status. **Add server** downloads if needed, tests the server and saves/enables it immediately; **Test and enable** checks an existing entry. Installation activity appears below the catalog. If Node.js or uv is missing, open **Install requirements / open Setup** and approve the required installer there, then refresh the catalog. Custom servers and Import remain below the catalog; manual configuration edits still require Save settings. Each server runs locally with the permissions of its process.

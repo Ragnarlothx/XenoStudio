@@ -302,3 +302,8 @@ body.reduce-motion .editingFile.active::before { animation:none; }
 #setupLog { white-space:pre-wrap; overflow-wrap:anywhere; max-height:160px; overflow:auto; background:var(--code); padding:12px; font:11px/1.6 var(--mono); user-select:text; }
 #setupStatus { min-height:20px; color:var(--warn); overflow-wrap:anywhere; }
 #setupWizard footer { margin-top:16px; flex-wrap:wrap; }
+#mcpPlugins { border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:18px; }
+#mcpPlugins > button { margin:0 6px 10px 0; }
+.mcp-plugin { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:12px; margin:8px 0; }
+.mcp-plugin p { margin:6px 0; }
+#mcpPluginLog { max-height:180px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }

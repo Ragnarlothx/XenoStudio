@@ -85,3 +85,8 @@ By hand: download the new zip and unzip it **over** the old folder (keep `data\`
 | An MCP server fails to add | The error shows the server's last output. Check its "Needs" item in step 1 is installed. |
 | Codex can't write files | **Settings → Codex → Sandbox**: choose *workspace-write*. |
 | Something else | `data\crash.log` has details. |
+
+
+## MCP add-ons catalog
+
+Open **Settings > MCP > MCP add-ons** to browse Desktop Commander (files and terminal), Windows-MCP (desktop control), Playwright (browser automation) and Fetch (web content). Cards show the server description, requirements and enabled status. **Add server** downloads if needed, tests the server and saves/enables it immediately; **Test and enable** checks an existing entry. Installation activity appears below the catalog. If Node.js or uv is missing, open **Install requirements / open Setup** and approve the required installer there, then refresh the catalog. Custom servers and Import remain below the catalog; manual configuration edits still require Save settings. Each server runs locally with the permissions of its process.
