@@ -245,6 +245,9 @@ namespace XenoStudio
                                                     ?? Str(inp?["url"]) ?? Str(inp?["query"]) ?? "";
                                     var tool = (name + " " + Short(detail, 120)).Trim();
                                     r.Tools.Add(tool); onEvent("tool", tool);
+                                    // the tool_use arrives before the tool runs: the host snapshots the file as it was
+                                    if (name is "Edit" or "Write" or "MultiEdit" or "NotebookEdit" && Str(inp?["file_path"] ?? inp?["notebook_path"]) is { Length: > 0 } fp)
+                                        onEvent("file", fp);
                                 }
                             }
                         break;
@@ -456,11 +459,16 @@ namespace XenoStudio
                         }
                         else if (type == "item.started" && itype == "command_execution")
                         { var tool = "$ " + Short(Str(it["command"]), 140); r.Tools.Add(tool); onEvent("tool", tool); }
-                        else if (type == "item.completed" && itype == "file_change")
+                        else if (itype == "file_change")
                         {
-                            var paths = (it["changes"] as JsonArray)?.Select(c => Path.GetFileName(Str(c?["path"]) ?? "")).Where(x => x != "");
-                            var tool = "edit " + (paths != null ? string.Join(", ", paths) : "");
-                            r.Tools.Add(tool.Trim()); onEvent("tool", tool.Trim());
+                            var full = (it["changes"] as JsonArray)?.Select(c => Str(c?["path"]) ?? "").Where(x => x != "").ToList() ?? new();
+                            // started = before the patch is applied (host snapshots); completed = after (host only learns the path)
+                            foreach (var p in full) onEvent(type == "item.started" ? "file" : "fileDone", p);
+                            if (type == "item.completed")
+                            {
+                                var tool = "edit " + string.Join(", ", full.Select(Path.GetFileName));
+                                r.Tools.Add(tool.Trim()); onEvent("tool", tool.Trim());
+                            }
                         }
                         else if (type == "item.started" && itype == "mcp_tool_call")
                         { var tool = $"{Str(it["server"])}.{Str(it["tool"])}"; r.Tools.Add(tool); onEvent("tool", tool); }

@@ -6,7 +6,7 @@ window.studioSettings = (() => {
   let promptDefaults = {template:'',footer:'',placeholders:[]}, promptFocus = 'promptTemplate', previewId = 'claude', previewPending = null;
   const groups = {
     General: [
-      ['userName','Your display name'], ['workDir','Shared working folder (several allowed: D:\\Projects,E:\\Work - the first is where the AIs start)'],
+      ['userName','Your display name'], ['xenoEditPath','XenoEdit executable path (blank = auto-detect)'], ['workDir','Shared working folder (several allowed: D:\\Projects,E:\\Work - the first is where the AIs start)'],
       ['firstSpeaker','Who answers first','select','claude,codex,alternate'],
       ['maxAiTurns','Maximum consecutive AI replies','number',1,50],
       ['turnTimeoutSec','Turn time limit in seconds (0 = unlimited)','number',0,86400],
@@ -54,7 +54,7 @@ window.studioSettings = (() => {
     Prompt: [['promptTemplate','Shared system prompt (blank = built-in default)','area'], ['promptFooter','Per-turn footer (blank = built-in default)','area']],
     MCP: [],
     Commands: [['shellEnabled','Enable !commands in chat','check'], ['shell','Command shell','select','powershell,pwsh,cmd'], ['shellShareWithAi','Include shell output in assistant context','check']],
-    Appearance: [['theme','Theme','select','dark,light'], ['ui.fontSize','Message font size','number',11,24], ['ui.accent','Accent color','color'], ['ui.density','Message spacing','select','comfortable,compact'], ['ui.timestamps','Show timestamps','check'], ['ui.tools','Show tool activity','check'], ['ui.sidebar','Show chat sidebar','check'], ['ui.enterToSend','Enter sends (otherwise Ctrl+Enter)','check']],
+    Appearance: [['theme','Theme','select','dark,light,cyberpunk,hacker'], ['ui.fontSize','Message font size','number',11,24], ['ui.accent','Accent color','color'], ['ui.density','Message spacing','select','comfortable,compact'], ['ui.timestamps','Show timestamps','check'], ['ui.tools','Show tool activity','check'], ['ui.sidebar','Show chat sidebar','check'], ['ui.enterToSend','Enter sends (otherwise Ctrl+Enter)','check']],
     Chat: [
       ['ui.defaultTarget','Default recipient','select','auto,both,claude,codex'],
       ['ui.autoScroll','Follow new replies automatically','check'],

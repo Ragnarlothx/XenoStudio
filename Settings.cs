@@ -49,7 +49,8 @@ namespace XenoStudio
         public bool ShellEnabled { get; set; } = true;           // "!command" in the composer runs it in WorkDir
         public string Shell { get; set; } = "powershell";        // powershell | pwsh | cmd
         public bool ShellShareWithAi { get; set; } = true;       // shell output is shown to the AIs on their next turn
-        public string Theme { get; set; } = "dark";
+        public string XenoEditPath { get; set; } = "";             // XenoEdit.exe for "Open in XenoEdit"; blank = find it automatically
+        public string Theme { get; set; } = "dark";              // dark | light | cyberpunk | hacker (CSS in web\, window chrome in ThemeChrome)
 
         // ---- Claude
         public bool ClaudeEnabled { get; set; } = true;
@@ -200,6 +201,7 @@ namespace XenoStudio
             RetryOnError = Math.Clamp(RetryOnError, 0, 5);
             RetryDelaySec = Math.Clamp(RetryDelaySec, 0, 300);
             ResumeHistory = Math.Clamp(ResumeHistory, 1, 500);
+            if (Theme is not ("dark" or "light" or "cyberpunk" or "hacker")) Theme = "dark";
             if (string.IsNullOrWhiteSpace(UserName)) UserName = "Xeno";
             UserName = UserName.Trim();
             DeepSeekMaxTokens = Math.Clamp(DeepSeekMaxTokens, 0, 1_000_000);

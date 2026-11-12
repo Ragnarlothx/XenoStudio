@@ -6,6 +6,7 @@
     const slots = [];
     const keep = html => '\u0000' + (slots.push(html) - 1) + '\u0000';
     s = s.replace(/`([^`\n]+)`/g, (_, c) => keep('<code>' + esc(c) + '</code>'));
+    s = s.replace(/\[([^\]\n]+)\]\(([^)\n]+)\)/g, (whole, label, path) => /^(?:[A-Za-z]:[\\/]|[.\w -]+[\\/]|[\w.-]+\.[a-z0-9]+$)/i.test(path) ? keep('<button class="fileChip" data-preview-path="' + esc(path) + '">' + esc(label) + '</button>') : whole);
     s = esc(s);
     s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => keep('<a href="' + u + '">' + t + '</a>'));
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;:!?'"])/g, (_, p, u) => p + keep('<a href="' + u + '">' + u + '</a>'));
@@ -31,12 +32,12 @@
       let m;
       if ((m = l.match(/^\s*(```+|~~~+)\s*([\w#+.-]*)/))) {
         flush();
-        const fence = m[1], lang = m[2];
+        const fence = m[1], lang = m[2], name = l.slice(m[0].length).trim().replace(/^(?:file(?:name)?=)?["']?|["']$/g, '');
         const code = [];
         i++;
         while (i < lines.length && !lines[i].trim().startsWith(fence)) code.push(lines[i++]);
         i++;
-        out += '<pre>' + (lang ? '<span class="lang">' + esc(lang) + '</span>' : '') + '<button class="cp">Copy</button><code>' + esc(code.join('\n')) + '</code></pre>';
+        out += '<pre data-name="' + esc(name) + '">' + (lang ? '<span class="lang">' + esc(lang) + '</span>' : '') + '<button class="cp">Copy</button><code>' + esc(code.join('\n')) + '</code></pre>';
         continue;
       }
       if (!l.trim()) { flush(); i++; continue; }

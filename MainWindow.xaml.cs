@@ -21,6 +21,7 @@ namespace XenoStudio
         public string Text { get; set; } = "";
         public List<string> Tools { get; set; } = new();
         public List<string> Images { get; set; } = new();   // attached pictures, relative to data\uploads ("<chatId>/<file>")
+        public List<FileEdit> Files { get; set; } = new();  // files an AI changed during this reply (change cards → diff view)
         public long Ts { get; set; } = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         public bool Error { get; set; }
     }
@@ -55,6 +56,7 @@ namespace XenoStudio
         bool busy;
         int aiTurns, alternate;
         string running;
+        EditTracker tracker;   // the running AI turn's file snapshots (null between turns)
         bool startupSent;
         List<string> mcpRefreshed = new();
         CancellationTokenSource cts = new();
@@ -134,6 +136,7 @@ namespace XenoStudio
             S.Clamp();
             try { mcpRefreshed = S.RefreshStaleMcp(); } catch (Exception ex) { CrashLog.Write("mcp refresh", ex); }
             if (src != SettingsFile || mcpRefreshed.Count > 0) SaveSettings();
+            ThemeChrome.Apply(this, web, S.Theme);   // title bar + background before the page paints, so there's no grey flash
             var last = ListChats().FirstOrDefault();
             if (last != null) chat = LoadChat(last.Id) ?? new Chat();
 
@@ -182,6 +185,39 @@ namespace XenoStudio
                     if (pendingSend != null) { var p = pendingSend; pendingSend = null; StartWithMessage(p); }
                     break;
                 case "send": UserSend((string)n["text"] ?? "", (string)n["target"] ?? "auto", SaveImages(n["images"] as JsonArray)); break;
+                // ---- code preview panel (web\ shows it with Monaco from web\lib\vs)
+                case "previewFile":
+                    Reply(n, "previewFile", () => CodePreview.ReadFile((string)n["path"] ?? "", S));
+                    break;
+                case "saveCode":
+                    {
+                        var name = CodePreview.SafeName((string)n["name"]);
+                        var saveDlg = new Microsoft.Win32.SaveFileDialog { Title = "Save code", FileName = name, InitialDirectory = S.PrimaryWorkDir, Filter = "All files|*.*" };
+                        if (saveDlg.ShowDialog(this) == true)
+                            Reply(n, "savedCode", () => { File.WriteAllText(saveDlg.FileName, (string)n["text"] ?? "", new UTF8Encoding(false)); return new { path = saveDlg.FileName }; });
+                        else Post(new { type = "savedCode", rid = (string)n["rid"], ok = false, cancelled = true });
+                    }
+                    break;
+                case "openInXenoEdit":
+                    Reply(n, "xenoEdit", () =>
+                    {
+                        var path = (string)n["path"];
+                        if (string.IsNullOrWhiteSpace(path)) path = CodePreview.WriteTemp((string)n["text"] ?? "", (string)n["name"]);
+                        return CodePreview.OpenInXenoEdit(path, S);
+                    });
+                    break;
+                case "xenoEditInfo":
+                    Post(new { type = "xenoEditInfo", exe = CodePreview.FindXenoEdit(S) });
+                    break;
+                // ---- shared editor: AI change diffs, saving your edits, live reload
+                case "fileDiff":
+                    Reply(n, "fileDiff", () => EditTracker.Diff((string)n["snap"] ?? ""));
+                    break;
+                case "saveFile":
+                    Reply(n, "savedFile", () => SaveUserEdit((string)n["path"] ?? "", (string)n["text"] ?? ""));
+                    break;
+                case "watchFile": Watch((string)n["path"], true); break;
+                case "unwatchFile": Watch((string)n["path"], false); break;
                 case "openImage":
                     {
                         var p = UploadPath((string)n["path"]);
@@ -197,6 +233,8 @@ namespace XenoStudio
                     break;
                 case "deleteChat":
                     var id = (string)n["id"];
+                    // edit snapshots are stored per message: read the chat before its file goes
+                    try { var gone = LoadChat(id); if (gone != null) EditTracker.DeleteForMessages(gone.Messages.Select(m => m.Id)); } catch { }
                     try { File.Delete(Path.Combine(ChatDir, id + ".json")); } catch { }
                     try { var up = UploadPath(id); if (up != null && Directory.Exists(up)) Directory.Delete(up, true); } catch { }
                     if (chat.Id == id) { if (busy) Stop(); chat = new Chat(); Post(new { type = "chat", chat, chats = ListChats() }); }
@@ -206,6 +244,7 @@ namespace XenoStudio
                     S = n["settings"].Deserialize<Settings>(J) ?? S;
                     S.Clamp();
                     SaveSettings();
+                    ThemeChrome.Apply(this, web, S.Theme);
                     Post(new { type = "settings", settings = S, exe = ExeInfo() });
                     _ = PostRuntime();
                     break;
@@ -222,6 +261,7 @@ namespace XenoStudio
                     break;
                 case "resetSettings":
                     S = new Settings(); S.Clamp(); SaveSettings();
+                    ThemeChrome.Apply(this, web, S.Theme);
                     Post(new { type = "settings", settings = S, exe = ExeInfo() });
                     break;
                 case "importMcp":
@@ -253,6 +293,85 @@ namespace XenoStudio
                 case "openUrl": OpenUrl((string)n["url"]); break;
                 case "export": ExportMarkdown(); break;
             }
+        }
+
+        // ---------------------------------------------------------------- shared editor
+        /// <summary>
+        /// Saves an edit Xeno made in the editor panel, then notes it in the chat so the AIs see it on their next turn
+        /// ("[Xeno]: edited src\cart.js in the editor (+3 −1)").
+        /// </summary>
+        object SaveUserEdit(string path, string text)
+        {
+            if (!Path.IsPathRooted(path)) throw new InvalidOperationException("Only files opened from disk can be saved; use Save as… for code blocks.");
+            var old = File.Exists(path) ? File.ReadAllText(path) : "";
+            File.WriteAllText(path, text, new UTF8Encoding(false));
+            var la = old.Replace("\r\n", "\n").Split('\n'); var lb = text.Replace("\r\n", "\n").Split('\n');
+            int added = lb.Except(la).Count(), removed = la.Except(lb).Count();
+            var shown = ShortPath(path);
+            AddMsg(new Msg { Who = "xeno", Text = $"_edited `{shown}` in the editor (+{added} −{removed})_" });
+            SaveChat();
+            return new { path, added, removed };
+        }
+
+        string ShortPath(string full)
+        {
+            foreach (var dir in new[] { S.PrimaryWorkDir }.Concat(S.ExtraDirs(includeClaudeExtras: true)))
+                try { var rel = Path.GetRelativePath(dir, full); if (!rel.StartsWith("..") && !Path.IsPathRooted(rel)) return rel; } catch { }
+            return full;
+        }
+
+        static readonly Regex AbsPath = new(@"[A-Za-z]:\\[^\s""'<>|*?`]+", RegexOptions.Compiled);
+        static readonly Regex RelPath = new(@"(?<![\w:\\/])(?:[\w.-]+[\\/])*[\w.-]+\.[A-Za-z0-9]{1,8}(?![\w\\/])", RegexOptions.Compiled);
+
+        /// <summary>File paths a prompt mentions that exist on disk (absolute, or relative to the work folders).</summary>
+        IEnumerable<string> MentionedPaths(string text)
+        {
+            var found = new List<string>();
+            foreach (Match m in AbsPath.Matches(text ?? ""))
+            {
+                var p = m.Value.TrimEnd('.', ',', ')', ':', ';');
+                if (File.Exists(p)) found.Add(p);
+            }
+            var dirs = new[] { S.PrimaryWorkDir }.Concat(S.ExtraDirs(includeClaudeExtras: true)).ToList();
+            foreach (Match m in RelPath.Matches(text ?? ""))
+                foreach (var d in dirs)
+                    try { var p = Path.Combine(d, m.Value); if (File.Exists(p)) { found.Add(p); break; } } catch { }
+            return found.Distinct(StringComparer.OrdinalIgnoreCase).Take(60);
+        }
+
+        string ResolveEditPath(string p)
+        {
+            if (string.IsNullOrWhiteSpace(p)) return null;
+            try { return Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(S.PrimaryWorkDir, p)); } catch { return null; }
+        }
+
+        readonly Dictionary<string, FileSystemWatcher> watchers = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Live reload: while a file is open in the panel, changes on disk (an AI editing it) are pushed as fileChanged.</summary>
+        void Watch(string path, bool on)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathRooted(path)) return;
+            if (!on) { if (watchers.Remove(path, out var w)) w.Dispose(); return; }
+            if (watchers.ContainsKey(path) || !File.Exists(path) || watchers.Count >= 32) return;
+            var fsw = new FileSystemWatcher(Path.GetDirectoryName(path)!, Path.GetFileName(path))
+            { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName, EnableRaisingEvents = true };
+            DateTime last = DateTime.MinValue;
+            void Changed(object _, FileSystemEventArgs e)
+            {
+                if ((DateTime.UtcNow - last).TotalMilliseconds < 400) return;   // editors fire several events per save
+                last = DateTime.UtcNow;
+                Post(new { type = "fileChanged", path, deleted = !File.Exists(path) });
+            }
+            fsw.Changed += Changed; fsw.Created += Changed; fsw.Deleted += Changed; fsw.Renamed += (s, e) => Changed(s, e);
+            watchers[path] = fsw;
+        }
+
+        /// <summary>Runs a request and posts { type, rid, ok, data } or { type, rid, ok:false, error } back to the page.</summary>
+        void Reply(JsonNode n, string type, Func<object> work)
+        {
+            var rid = (string)n["rid"];
+            try { Post(new { type, rid, ok = true, data = work() }); }
+            catch (Exception ex) { Post(new { type, rid, ok = false, error = ex.Message }); }
         }
 
         static void OpenUrl(string url)
@@ -699,6 +818,9 @@ namespace XenoStudio
                     Post(new { type = "start", msg });
                     int seenUpTo = chat.Messages.Count;   // everything before this agent's own message has now been shown to it
 
+                    tracker = new EditTracker(msg.Id, id, ResolveEditPath);   // snapshots files this AI edits during the reply
+                    try { tracker.Prime(MentionedPaths(prompt).Concat(chat.Messages.SelectMany(m => m.Files ?? new()).Select(f => f.Path)).Reverse().Distinct(StringComparer.OrdinalIgnoreCase)); }
+                    catch (Exception ex) { CrashLog.Write("edit prime", ex); }
                     var r = await RunTurn(id, st, prompt, images, msg, token);
                     if (!r.Ok && !token.IsCancellationRequested && !string.IsNullOrEmpty(st.SessionId) && LooksLikeLostSession(r.Error))
                     {
@@ -720,6 +842,8 @@ namespace XenoStudio
                     }
 
                     msg.Tools = r.Tools;
+                    try { msg.Files = tracker?.Finish() ?? new(); } catch (Exception ex) { CrashLog.Write("edit tracker", ex); }
+                    tracker = null;
                     bool chained = false;
                     if (r.Ok)
                     {
@@ -783,6 +907,14 @@ namespace XenoStudio
                 r = await Task.Run(() => agent.RunAsync(prompt, st.SessionId, SystemNote(id), S, images, (kind, text) =>
                 {
                     if (kind == "tool") Post(new { type = "tool", id = msg.Id, text });
+                    else if (kind is "file" or "fileDone")
+                    {
+                        // an AI is about to change (or just changed) a file: snapshot it and tell the page so it can show "editing…"
+                        // Claude announces an edit before running it (snapshot now is accurate); Codex's announcement
+                        // can arrive after the patch landed, so it only counts if the file was primed before the turn
+                        var full = kind == "fileDone" ? tracker?.After(text) : id == "claude" ? tracker?.Before(text) : tracker?.Late(text);
+                        if (full != null) Post(new { type = "aiFile", id = msg.Id, who = id, path = full, phase = kind == "file" ? "editing" : "edited" });
+                    }
                     else Post(new { type = "delta", id = msg.Id, text });
                 }, t));
             }
