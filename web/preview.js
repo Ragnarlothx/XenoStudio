@@ -56,7 +56,13 @@ window.codePreview = (() => {
       const old=editor.getModel();const model=monaco.editor.createModel(data.text,data.lang||language(data.name));editor.setModel(model);old?.dispose();applyTheme(theme);$('previewEditor').hidden=false;$('previewFallback').hidden=true;editor.layout();$('previewMode').disabled=!!data.truncated;setMode(false);
     }catch{if(token===version)status('Editor unavailable. Read-only plain text is shown.');}
   }
-  async function file(path,accepted=false){if(!accepted&&!allowReplace())return;const token=++version;status('Loading file…');try{const d=await request('previewFile',{path});if(token===version)await show({...d,lang:language(d.name)},true);}catch(e){if(token===version){panel.classList.remove('hidden');status(e.message);}}}
+  // Switch the header to the clicked file right away; if it can't be opened (deleted, binary, too big), clear the old file
+  // out of the panel and say why, instead of leaving the previous file on screen looking like the click did nothing.
+  function pending(path){const name=path.split(/[\\/]/).pop()||path;panel.classList.remove('hidden');$('previewName').textContent=name;$('previewName').title=path;$('previewMeta').textContent='Loading…';status('Loading '+path+'…');}
+  function fail(path,msg){current=null;diffMode=false;watch(null);setMode(false);$('previewName').textContent=path.split(/[\\/]/).pop()||path;$('previewName').title=path;$('previewMeta').textContent='Can’t open this file';
+    $('previewEditor').hidden=true;$('previewDiff').hidden=true;$('previewFallback').hidden=false;$('previewFallback').textContent=msg.includes(path)?msg:msg+'\n\n'+path;
+    for(const id of ['previewMode','previewAttach','previewCopy','previewSave','previewEdit'])$(id).disabled=true;$('previewSaveFile').classList.add('hidden');$('previewReload').classList.add('hidden');status(msg);}
+  async function file(path,accepted=false){if(!accepted&&!allowReplace())return;const token=++version;pending(path);try{const d=await request('previewFile',{path});if(token===version)await show({...d,lang:language(d.name)},true);}catch(e){if(token===version)fail(path,e.message);}}
   function close(){if(!allowReplace())return;++version;panel.classList.add('hidden');watch(null);focusReturn?.focus();}
   $('previewClose').onclick=close;panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
   $('previewCopy').onclick=()=>current&&navigator.clipboard.writeText(text()).then(()=>status('Copied.'),()=>status('Copy failed.'));
@@ -70,7 +76,7 @@ window.codePreview = (() => {
     for(const id of ['previewMode','previewSaveFile','previewReload','previewSave','previewAttach','previewEdit'])$(id).disabled=true;
     if(!diffEditor)diffEditor=monaco.editor.createDiffEditor($('previewDiff'),{readOnly:true,originalEditable:false,automaticLayout:true,renderSideBySide:false,fontSize:13});
     const old=diffEditor.getModel();diffEditor.setModel({original:monaco.editor.createModel(d.before||'',language(item.path)),modified:monaco.editor.createModel(d.after||'',language(item.path))});old?.original.dispose();old?.modified.dispose();diffEditor.layout();status('Recorded AI change - before and after.');
-  }catch(e){panel.classList.remove('hidden');status(e.message);}}
+  }catch(e){if(token===version)fail(item.path,e.message);}}
   function cards(container,files){for(const item of files||[]){const b=document.createElement('button');b.className='changeCard';b.textContent=(item.who||'AI')+' changed '+item.path+'  +'+item.added+' -'+item.removed+(item.created?' (created)':item.deleted?' (deleted)':'')+(item.beforeUnknown?' - before not captured':'');b.onclick=()=>diff(item);container.append(b);}}
   function resize(width){panel.style.width=Math.max(280,Math.min(width,innerWidth-240))+'px';editor?.layout();}
   const grip=$('previewGrip');grip.onpointerdown=e=>{grip.setPointerCapture(e.pointerId);};grip.onpointermove=e=>{if(grip.hasPointerCapture(e.pointerId))resize(innerWidth-e.clientX);};grip.onkeydown=e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();resize(panel.getBoundingClientRect().width+(e.key==='ArrowLeft'?24:-24));}};

@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.4")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.5")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.4 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.5 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -115,6 +115,7 @@ story += [
         ["1.5.2", "2026-11-12", "Claude", "Skip option for sign-in: automatic when already signed in, or per account."],
         ["1.5.3", "2026-11-12", "Codex", "Workspace and drives: pick any drive or folder on the PC, including USB and network drives."],
         ["1.5.4", "2026-11-12", "Claude", "Review fixes: no freeze from offline network drives, docs cleaned up."],
+        ["1.5.5", "2026-11-12", "Claude", "Code workspace always switches to the clicked file, with a clear message when it can't be opened."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -444,6 +445,18 @@ story += [
          "Rewritten: a Workspace and drives item in the README's feature list and its own section in INSTALL.md."],
         ["The setup bridge document didn't list the sign-in skip and drive requests.", code("docs\\SETUP-BRIDGE.md") + " updated."],
     ], [3.2 * inch, W - 3.2 * inch]),
+    P("v1.5.5 · 2026-11-12 · " + by("Claude"), s_h1),
+    P("Code workspace always follows the file you click", s_h2),
+    table([
+        ["Problem", "Fix"],
+        ["Clicking a file that couldn't be opened (deleted since, a picture or other non-text file, unreadable) only changed a small "
+         "status line. The previous file's name and code stayed in the panel, so it looked like the click did nothing.",
+         "The panel switches to the clicked file's name immediately (\"Loading…\"). If it can't be opened, the old file is cleared and the "
+         "panel says why (\"File not found\", \"That file isn't text\") with the copy and save buttons disabled."],
+        ["The same applied to change cards whose recorded diff couldn't be loaded.", "Same handling."],
+    ], [3.2 * inch, W - 3.2 * inch]),
+    *bullets(["Tested: text file → missing file → picture → text file; the panel showed the right file or message each time.",
+              "README: Codex added a responsibility and \"as is\" disclaimer."]),
 ]
 
 # ---------------------------------------------------------------- files, backups, open items
@@ -501,6 +514,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.4", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.5", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
