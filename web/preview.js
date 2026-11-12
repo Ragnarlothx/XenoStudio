@@ -58,7 +58,7 @@ window.codePreview = (() => {
   }
   // Switch the header to the clicked file right away; if it can't be opened (deleted, binary, too big), clear the old file
   // out of the panel and say why, instead of leaving the previous file on screen looking like the click did nothing.
-  function pending(path){const name=path.split(/[\\/]/).pop()||path;panel.classList.remove('hidden');$('previewName').textContent=name;$('previewName').title=path;$('previewMeta').textContent='Loading…';status('Loading '+path+'…');}
+  function pending(path){current=null;diffMode=false;watch(null);const name=path.split(/[\\/]/).pop()||path;panel.classList.remove('hidden');$('previewName').textContent=name;$('previewName').title=path;$('previewMeta').textContent='Loading...';$('previewEditor').hidden=true;$('previewDiff').hidden=true;$('previewFallback').hidden=false;$('previewFallback').textContent='';for(const id of ['previewMode','previewAttach','previewCopy','previewSave','previewEdit','previewSaveFile','previewReload'])$(id).disabled=true;status('Loading '+path+'...');}
   function fail(path,msg){current=null;diffMode=false;watch(null);setMode(false);$('previewName').textContent=path.split(/[\\/]/).pop()||path;$('previewName').title=path;$('previewMeta').textContent='Can’t open this file';
     $('previewEditor').hidden=true;$('previewDiff').hidden=true;$('previewFallback').hidden=false;$('previewFallback').textContent=msg.includes(path)?msg:msg+'\n\n'+path;
     for(const id of ['previewMode','previewAttach','previewCopy','previewSave','previewEdit'])$(id).disabled=true;$('previewSaveFile').classList.add('hidden');$('previewReload').classList.add('hidden');status(msg);}
@@ -70,7 +70,7 @@ window.codePreview = (() => {
   $('previewEdit').onclick=async()=>{if(!current)return;try{await request('openInXenoEdit',current.path&&!dirty()?{path:current.path}:{text:text(),name:current.name});status('Opened in XenoEdit.');}catch(e){status(e.message);}};
   $('previewReload').onclick=()=>current?.path&&file(current.path);
   $('previewSaveFile').onclick=async()=>{if(!current?.path||current.truncated)return;if(current.externalChanged&&!confirm('The file changed on disk. Overwrite it with this draft?'))return;const draft=current,snapshot=text();saving=true;try{const d=await request('saveFile',{path:draft.path,text:snapshot});if(current===draft){current.text=snapshot;current.externalChanged=false;updateName();status('Saved file (+'+d.added+' -'+d.removed+').');}}catch(e){status(e.message);}finally{saving=false;}};
-  async function diff(item){if(!allowReplace())return;const token=++version;try{const d=await request('fileDiff',{snap:item.snap});if(token!==version)return;
+  async function diff(item){if(!allowReplace())return;const token=++version;pending(item.path);try{const d=await request('fileDiff',{snap:item.snap});if(token!==version)return;
     await show({name:item.path.split(/[\\/]/).pop(),text:d.after||'',lang:language(item.path)},true);if(version!==token+1)return;
     if(d.beforeUnknown){status('Before not captured. Showing the recorded result only.');return;}await loadEditor();diffMode=true;watch(null);$('previewEditor').hidden=true;$('previewFallback').hidden=true;$('previewDiff').hidden=false;
     for(const id of ['previewMode','previewSaveFile','previewReload','previewSave','previewAttach','previewEdit'])$(id).disabled=true;

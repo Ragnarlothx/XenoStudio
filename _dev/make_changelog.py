@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.5")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.6")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.5 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.6 (2026-11-12)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -115,6 +115,7 @@ story += [
         ["1.5.2", "2026-11-12", "Claude", "Skip option for sign-in: automatic when already signed in, or per account."],
         ["1.5.3", "2026-11-12", "Codex", "Workspace and drives: pick any drive or folder on the PC, including USB and network drives."],
         ["1.5.4", "2026-11-12", "Claude", "Review fixes: no freeze from offline network drives, docs cleaned up."],
+        ["1.5.6", "2026-11-12", "Codex", "Clear the previous script immediately and stop its watcher when switching files or diffs."],
         ["1.5.5", "2026-11-12", "Claude", "Code workspace always switches to the clicked file, with a clear message when it can't be opened."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
@@ -457,6 +458,14 @@ story += [
     ], [3.2 * inch, W - 3.2 * inch]),
     *bullets(["Tested: text file → missing file → picture → text file; the panel showed the right file or message each time.",
               "README: Codex added a responsibility and \"as is\" disclaimer."]),
+    P("v1.5.6 - 2026-11-12 - " + by("Codex"), s_h1),
+    *bullets([
+        "File switching clears the previous editor and disables its action buttons immediately while the requested script loads.",
+        "The previous file watcher is detached before loading another script, preventing an old file notification from pulling the panel back.",
+        "The same loading state applies to change-card diffs. Missing or non-text files show their own error instead of old code.",
+        "Browser regression checks cover switching scripts, overlapping requests, missing files and old-file notifications. Release built and packaged without local settings or credentials.",
+    ]),
+
 ]
 
 # ---------------------------------------------------------------- files, backups, open items
@@ -514,6 +523,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.5", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.6", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
