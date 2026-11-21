@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.10")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.11")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.10 (2026-11-20)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.11 (2026-11-20)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -121,6 +121,7 @@ story += [
         ["1.5.8", "2026-11-12", "Codex", "MCP add-ons: plugin-style cards for Desktop Commander, Windows-MCP, Playwright and Fetch."],
         ["1.5.9", "2026-11-12", "Codex", "Settings → Installation: pick tool paths and install missing components (with confirmation)."],
         ["1.5.10", "2026-11-20", "Claude", "Model and effort pickers in the chat window: live Codex model list, Claude effort levels, full reasoning ranges."],
+        ["1.5.11", "2026-11-20", "Claude Desktop + Claude", "Bug fix: builds from source are self-contained again, so XenoStudio never asks for the .NET Desktop Runtime."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -524,6 +525,25 @@ story += [
     P("Files: " + code("ModelCatalog.cs") + " (new), " + code("web\\models.js") + " (new), " + code("Settings.cs") + " (ClaudeEffort), "
       + code("Agents.cs") + " (--effort), " + code("MainWindow.xaml.cs") + " (modelCatalog / setModel requests), "
       + code("web\\settings.js") + ", " + code("web\\index.html") + ", " + code("web\\style.css") + ".", s_meta),
+    P("v1.5.11 · 2026-11-20 · bug fix · " + by("Claude Desktop") + " + " + by("Claude"), s_h1),
+    P("Known issue in 1.5.10: builds from source asked for the .NET Desktop Runtime", s_h2),
+    table([
+        ["", ""],
+        ["Symptom", "After updating to 1.5.10 by building from source, XenoStudio wouldn't start and Windows asked to install the "
+                    ".NET 8 Desktop Runtime."],
+        ["Who was affected", "Only builds made from source: the README's " + code("dotnet build -c Release -o dist") + " command and the "
+                             "local developer updater. The 1.5.10 <b>download</b> (release zip) and the in-app <b>Update XenoStudio</b> "
+                             "button were not affected: those are self-contained and include .NET."],
+        ["Cause", "The project file built framework-dependent by default (it expects .NET to be installed). The local 1.5.10 update was "
+                  "built that way and copied over a self-contained installation, replacing its startup files with ones that look for an "
+                  "installed .NET 8 Desktop Runtime the PC doesn't have."],
+        ["Fix", "The project now builds self-contained by default (" + code("SelfContained=true") + ", " + code("win-x64") + "), so every "
+                "build carries its own .NET. " + code("_dev\\package.ps1 -FrameworkDependent") + " still makes a small build for PCs that "
+                "have .NET, by asking for it explicitly. Found and fixed by Claude Desktop; verified that the running copy uses its "
+                "bundled .NET 8.0.29 and every runtime file matches."],
+        ["If you hit it", "Install 1.5.11 (Settings → Runtime → Update XenoStudio, or the release zip), or rebuild from source; "
+                          "nothing needs to be installed."],
+    ], [1.3 * inch, W - 1.3 * inch], header=False),
     P("Files changed", s_h1),
     table([
         ["File", "Version", "What changed"],
@@ -577,6 +597,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.10", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.11", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
