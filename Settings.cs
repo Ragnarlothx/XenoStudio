@@ -58,6 +58,7 @@ namespace XenoStudio
         public string ToolSearchFolders { get; set; } = ""; // optional tool directories, one per line
         public string ClaudePath { get; set; } = "";
         public string ClaudeModel { get; set; } = "";
+        public string ClaudeEffort { get; set; } = "";           // "" (CLI default) | low | medium | high | xhigh | max  (--effort)
         public string ClaudeFallbackModel { get; set; } = "";
         public string ClaudeMode { get; set; } = "read";         // read | edit | full
         public string ClaudeExtraDirs { get; set; } = "";        // , or ; separated (--add-dir)
@@ -75,7 +76,7 @@ namespace XenoStudio
         public bool CodexUseBundled { get; set; } = true;        // runtime\codex.exe next to XenoStudio.exe
         public string CodexPath { get; set; } = "";
         public string CodexModel { get; set; } = "";
-        public string CodexReasoning { get; set; } = "";         // "" | minimal | low | medium | high
+        public string CodexReasoning { get; set; } = "";         // "" (model default) | low | medium | high | xhigh | max | ultra (per model; see modelCatalog)
         public string CodexSandbox { get; set; } = "read-only";  // read-only | workspace-write | danger-full-access
         public bool CodexUseConfig { get; set; } = false;        // also load ~/.codex/config.toml
         public string CodexSystemExtra { get; set; } = "";

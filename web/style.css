@@ -307,3 +307,14 @@ body.reduce-motion .editingFile.active::before { animation:none; }
 .mcp-plugin { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:12px; margin:8px 0; }
 .mcp-plugin p { margin:6px 0; }
 #mcpPluginLog { max-height:180px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+
+/* model + effort pickers in the composer (models.js) */
+#modelPick { display:inline-flex; gap:10px; margin-left:12px; align-items:center; }
+#modelPick .mp { display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border:1px solid var(--border); border-radius:8px; background:var(--panel); }
+#modelPick .mp.off { opacity:.45; }
+#modelPick .mp-name { font-size:11px; color:var(--fg2); margin-right:2px; }
+#modelPick .mp-claude .mp-name { color:var(--claude, #d97757); }
+#modelPick .mp-codex .mp-name { color:var(--codex, #10a37f); }
+#modelPick select { background:transparent; color:var(--fg); border:0; font:inherit; font-size:12px; max-width:170px; padding:2px 0; cursor:pointer; }
+#modelPick select:focus { outline:1px solid var(--accent); border-radius:4px; }
+#modelPick select option { background:var(--panel); color:var(--fg); }

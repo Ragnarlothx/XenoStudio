@@ -28,7 +28,7 @@ window.studioSettings = (() => {
     ],
     Claude: [
       ['claudeEnabled','Enable Claude','check'], ['claudeUseBundled','Use pinned runtime\\claude.exe','check'],
-      ['claudeModel','Model (blank = CLI default)'], ['claudeFallbackModel','Fallback model'],
+      ['claudeModel','Model (blank = CLI default)'], ['claudeEffort','Effort','select',',low,medium,high,xhigh,max'], ['claudeFallbackModel','Fallback model'],
       ['claudeMode','Permissions','select','read,edit,full'], ['claudeExtraDirs','Additional folders (, or ; separated)'],
       ['claudePath','Custom executable path'], ['claudeMaxTurns','Agent steps per reply (0 = default)','number',0,500],
       ['claudeAllowedTools','Allowed tools (comma separated)'], ['claudeDisallowedTools','Blocked tools (comma separated)'],
@@ -37,7 +37,7 @@ window.studioSettings = (() => {
     ],
     Codex: [
       ['codexEnabled','Enable Codex','check'], ['codexUseBundled','Use pinned runtime\\codex.exe','check'],
-      ['codexModel','Model (blank = CLI default)'], ['codexReasoning','Reasoning effort','select',',minimal,low,medium,high'],
+      ['codexModel','Model (blank = CLI default)'], ['codexReasoning','Reasoning effort','select',',low,medium,high,xhigh,max,ultra'],
       ['codexSandbox','Access','select','read-only,workspace-write,danger-full-access'],
       ['codexPath','Custom executable path'], ['codexUseConfig','Also load your installed Codex configuration','check'],
       ['codexSystemExtra','Codex instructions','area'], ['codexExtraArgs','Extra CLI arguments'], ['codexEnv','Environment variables (KEY=VALUE per line)','area']

@@ -167,6 +167,7 @@ namespace XenoStudio
             if (string.IsNullOrEmpty(sessionId)) { r.SessionId = Guid.NewGuid().ToString(); args.Add("--session-id"); args.Add(r.SessionId); }
             else { r.SessionId = sessionId; args.Add("--resume"); args.Add(sessionId); }
             if (!string.IsNullOrWhiteSpace(s.ClaudeModel)) { args.Add("--model"); args.Add(s.ClaudeModel.Trim()); }
+            if (s.ClaudeEffort?.Trim() is "low" or "medium" or "high" or "xhigh" or "max") { args.Add("--effort"); args.Add(s.ClaudeEffort.Trim()); }
             if (!string.IsNullOrWhiteSpace(s.ClaudeFallbackModel)) { args.Add("--fallback-model"); args.Add(s.ClaudeFallbackModel.Trim()); }
             if (s.ClaudeMaxTurns > 0) { args.Add("--max-turns"); args.Add(s.ClaudeMaxTurns.ToString()); }
 

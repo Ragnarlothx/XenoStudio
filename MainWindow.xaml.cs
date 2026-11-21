@@ -240,6 +240,28 @@ namespace XenoStudio
                 case "setupDone": S.SetupDone = true; SaveSettings(); Post(new { type = "settings", settings = S, exe = ExeInfo() }); break;
                 case "mcpCatalog": Reply(n, "mcpCatalog", () => new { servers = Setup.Catalog(S), node = Setup.Which("npx") != null, uv = Setup.Which("uvx") != null }); break;
                 case "mcpInstall": _ = McpInstall(n); break;
+                // ---- model / effort pickers (ModelCatalog.cs)
+                case "modelCatalog":
+                    _ = ReplyAsync(n, "modelCatalog", async () => new
+                    {
+                        claude = new { models = ModelCatalog.Claude(), current = S.ClaudeModel, effort = S.ClaudeEffort },
+                        codex = new { models = await ModelCatalog.Codex(Exe("codex")), current = S.CodexModel, effort = S.CodexReasoning },
+                    });
+                    break;
+                case "setModel":   // { ai: "claude"|"codex", model, effort } — applies from the next reply
+                    Reply(n, "setModel", () =>
+                    {
+                        var ai = (string)n["ai"]; var model = ((string)n["model"] ?? "").Trim(); var effort = ((string)n["effort"] ?? "").Trim();
+                        if (model.Length > 80 || !System.Text.RegularExpressions.Regex.IsMatch(model, @"^[A-Za-z0-9._\-\[\]]*$")) throw new ArgumentException("That isn't a model name.");
+                        if (effort != "" && effort is not ("low" or "medium" or "high" or "xhigh" or "max" or "ultra")) throw new ArgumentException("Unknown effort level.");
+                        if (ai == "claude") { if (effort == "ultra") effort = "max"; S.ClaudeModel = model; S.ClaudeEffort = effort; }
+                        else if (ai == "codex") { S.CodexModel = model; S.CodexReasoning = effort; }
+                        else throw new ArgumentException("Choose claude or codex.");
+                        SaveSettings();
+                        Post(new { type = "settings", settings = S, exe = ExeInfo() });
+                        return new { ai, model, effort };
+                    });
+                    break;
                 // ---- app updates from GitHub releases (Updater.cs)
                 case "checkUpdate": _ = ReplyAsync(n, "checkUpdate", async () => lastUpdate = await Updater.Check(AppVersion)); break;
                 case "installUpdate": _ = InstallUpdate(n); break;
