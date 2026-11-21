@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.9")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.10")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.9 (2026-11-12)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.10 (2026-11-20)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -115,9 +115,12 @@ story += [
         ["1.5.2", "2026-11-12", "Claude", "Skip option for sign-in: automatic when already signed in, or per account."],
         ["1.5.3", "2026-11-12", "Codex", "Workspace and drives: pick any drive or folder on the PC, including USB and network drives."],
         ["1.5.4", "2026-11-12", "Claude", "Review fixes: no freeze from offline network drives, docs cleaned up."],
+        ["1.5.5", "2026-11-12", "Claude", "Code workspace always switches to the clicked file, with a clear message when it can't be opened."],
         ["1.5.6", "2026-11-12", "Codex", "Clear the previous script immediately and stop its watcher when switching files or diffs."],
         ["1.5.7", "2026-11-12", "Claude", "Update XenoStudio from GitHub: Settings → Runtime, checksum-verified, closes and reopens by itself."],
-        ["1.5.5", "2026-11-12", "Claude", "Code workspace always switches to the clicked file, with a clear message when it can't be opened."],
+        ["1.5.8", "2026-11-12", "Codex", "MCP add-ons: plugin-style cards for Desktop Commander, Windows-MCP, Playwright and Fetch."],
+        ["1.5.9", "2026-11-12", "Codex", "Settings → Installation: pick tool paths and install missing components (with confirmation)."],
+        ["1.5.10", "2026-11-20", "Claude", "Model and effort pickers in the chat window: live Codex model list, Claude effort levels, full reasoning ranges."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -492,6 +495,35 @@ story += [
     *bullets(["Settings > MCP includes plugin-style cards for Desktop Commander, Windows-MCP, Playwright and Fetch.", "Cards show descriptions, runtime prerequisites and enabled status. Add downloads, tests and enables a server using the existing backend; progress appears in an activity log.", "Missing prerequisites lead to Setup. Custom configuration and Import remain available, with manual edits saved separately.", "Browser checks cover catalog rendering, installed states, missing requirements and setup navigation. Tests did not install software."]),
     P("v1.5.9 - Installation paths - " + by("Codex"), s_h1),
     *bullets(["Settings > Installation provides executable pickers for Claude Code, Codex and XenoEdit, plus additional installed-tool directories.", "Check saved paths saves the draft and checks local tools. Install missing components checks first, then uses the existing native installation confirmation.", "Additional tool folders are prioritized within the app and inherited by child tools. Windows user/system PATH is unchanged; clearing folders removes overrides while preserving inherited paths.", "Browser and isolated path-helper checks passed. Tests did not install software or launch sign-ins."]),
+    P("v1.5.10 · 2026-11-20 · " + by("Claude"), s_h1),
+    P("Choose each AI's model and reasoning effort right in the chat window", s_h2),
+    *bullets([
+        "Two small dropdowns per AI sit next to <b>Send to</b>: <b>model</b> and <b>effort</b>. Changes save immediately and apply "
+        "from that AI's next reply. The same settings stay available in Settings → Claude and Settings → Codex.",
+        "<b>Codex models come live from the installed Codex CLI</b> (" + code("codex debug models") + ", cached for 10 minutes), so new "
+        "models appear without a XenoStudio update. At release that is 10 models, including GPT-6.2-Astra, GPT-6.2-Sol, GPT-6.1 Terra, "
+        "GPT-6-Astra, GPT-6-Sol and GPT-6-Luna. If the CLI can't list them, a short built-in list is offered instead.",
+        "<b>Codex effort</b>: low, medium, high, extra high, max and, on most models, <b>ultra</b>. Ultra lets Codex delegate to "
+        "sub-agents automatically; it's slower and uses more of the plan, and the picker says so.",
+        "<b>Claude models</b>: Default, Opus 5.5, Sonnet 5.5, Haiku 5.5 and Fable 5.2. Fable is labelled <i>needs usage credits</i>: "
+        "on plans without credits Claude refuses it, and the label explains why instead of leaving a mysterious error.",
+        "<b>Claude effort is new</b>: low, medium, high, extra high or max, passed to Claude Code as " + code("--effort") + ".",
+        "Each model shows only the effort levels it supports. Switching to a model that lacks the chosen level (for example from "
+        "ultra to GPT-6-Luna) falls back to that model's default instead of sending a level it would reject.",
+        "Settings → Codex reasoning used to stop at <i>high</i>; it now offers the full range (low to ultra). Settings → Claude gains Effort.",
+    ]),
+    P("Checks", s_h2),
+    *bullets([
+        "In an isolated copy: both pickers loaded the live catalog (Claude 5 choices, Codex 11 including Default), both choices saved to "
+        "settings, and the unsupported-level fallback worked.",
+        "Real calls: Opus 5.5, Sonnet 5.5 and Haiku 5.5 each answered with an effort level set. Fable 5.2 was refused for usage credits, "
+        "as labelled.",
+        "Not yet confirmed live: Codex with a high effort on GPT-6.2-Astra. The ChatGPT usage limit was reached at the time, so Codex "
+        "refused before checking the model.",
+    ]),
+    P("Files: " + code("ModelCatalog.cs") + " (new), " + code("web\\models.js") + " (new), " + code("Settings.cs") + " (ClaudeEffort), "
+      + code("Agents.cs") + " (--effort), " + code("MainWindow.xaml.cs") + " (modelCatalog / setModel requests), "
+      + code("web\\settings.js") + ", " + code("web\\index.html") + ", " + code("web\\style.css") + ".", s_meta),
     P("Files changed", s_h1),
     table([
         ["File", "Version", "What changed"],
@@ -545,6 +577,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.9", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.10", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
