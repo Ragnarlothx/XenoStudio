@@ -16,7 +16,7 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 
 if ($FrameworkDependent) {
-    dotnet build XenoStudio.csproj -c Release -o $stage
+    dotnet build XenoStudio.csproj -c Release -p:SelfContained=false -o $stage
 } else {
     dotnet publish XenoStudio.csproj -c Release -r win-x64 --self-contained true -o $stage
 }
