@@ -58,7 +58,8 @@ namespace XenoStudio
         public string ToolSearchFolders { get; set; } = ""; // optional tool directories, one per line
         public string ClaudePath { get; set; } = "";
         public string ClaudeModel { get; set; } = "";
-        public string ClaudeEffort { get; set; } = "";           // "" (CLI default) | low | medium | high | xhigh | max  (--effort)
+        public bool ShowThinking { get; set; } = true;           // stream each AI's thinking/reasoning summaries into the Activity panel
+        public string ClaudeEffort { get; set; } = "";         // "" (CLI default) | low | medium | high | xhigh | max  (--effort)
         public string ClaudeFallbackModel { get; set; } = "";
         public string ClaudeMode { get; set; } = "read";         // read | edit | full
         public string ClaudeExtraDirs { get; set; } = "";        // , or ; separated (--add-dir)

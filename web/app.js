@@ -18,6 +18,7 @@
   const fmtTime = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const nearBottom = () => { const l = $('log'); return l.scrollHeight - l.scrollTop - l.clientHeight < 80; };
   const toBottom = (force) => { const l = $('log'); if (force || (window.studioUi?.autoScroll !== false && nearBottom())) l.scrollTop = l.scrollHeight; };
+  const activity = window.createActivityPanel(NAMES, agentKeys, fmtTime);
 
   function msgEl(m) {
     if (m.who === 'system') {
@@ -73,6 +74,7 @@
     for (const m of chat.messages) log.appendChild(msgEl(m));
     toBottom(true);
     renderChats(window._chats || []);
+    activity.show(chat);
   }
 
   function renderChats(list) {
@@ -105,6 +107,7 @@
     }
     const oldTarget = window.studioUi?.defaultTarget;
     window.studioUi = studioSettings.apply(s);
+    activity.applySettings(s, window.studioUi);
     if(oldTarget !== window.studioUi.defaultTarget) {
       target=window.studioUi.defaultTarget;
       if(agentKeys[target] && !s[agentKeys[target]])target='auto';
@@ -156,10 +159,12 @@
         break;
       }
       case 'start': {
+        if (d.chatId && d.chatId !== chat.id) break;
         if (!chat.messages.length) $('log').innerHTML = '';
         const el = msgEl(d.msg);
         $('log').appendChild(el);
         live.set(d.msg.id, { el, text: '', tools: [] });
+        activity.start(d.msg);
         fill(el, '', [], true);
         toBottom();
         break;
@@ -169,6 +174,7 @@
         const L = live.get(d.id); if (!L) break;
         const stick = window.studioUi?.autoScroll !== false && nearBottom();
         L.text += d.text; fill(L.el, L.text, L.tools, true);
+        activity.replying(d.id);
         if (stick) toBottom(true);
         break;
       }
@@ -180,25 +186,32 @@
         if (stick) toBottom(true);
         break;
       }
+      case 'trace': activity.trace(d); break;
       case 'done': {
+        if (d.chatId && d.chatId !== chat.id) break;
         const L = live.get(d.msg.id);
-        chat.messages.push(d.msg);
+        const saved = chat.messages.findIndex(m => m.id === d.msg.id);
+        if (saved < 0) chat.messages.push(d.msg); else chat.messages[saved] = d.msg;
         live.delete(d.msg.id);
         const el = msgEl(d.msg);
         const stick = window.studioUi?.autoScroll !== false && nearBottom();
-        if (L) L.el.replaceWith(el); else $('log').appendChild(el);
+        const previous = L?.el || $('m-' + d.msg.id);
+        if (previous) previous.replaceWith(el); else $('log').appendChild(el);
+        activity.done(d.msg);
         if (stick) toBottom(true);
         break;
       }
       case 'status': {
+        if (d.chatId && d.chatId !== chat.id) break;
         busy = d.busy;
-        for (const [k, v] of Object.entries(d.agents)) {
+        for (const [k, v] of Object.entries(d.agents || {})) {
           const p = document.querySelector('[data-agent="'+k+'"]');
           if (!p) continue;
           p.className = 'pill ' + v;
           p.title = NAMES[k] + ': ' + v + '. Click to toggle.';
         }
         $('bStop').classList.toggle('hidden', !busy);
+        activity.setStatus(d);
         break;
       }
     }
@@ -306,12 +319,14 @@
     if (e.ctrlKey && e.key.toLowerCase() === 'n') { e.preventDefault(); newChat(); }
   });
 
-  $('log').addEventListener('click', e => {
+  function handleReadingClick(e) {
     const a = e.target.closest('a');
     if (a) { e.preventDefault(); send({ cmd: 'openUrl', url: a.href }); return; }
     const cp = e.target.closest('pre .cp');
     if (cp) copy(cp.parentElement.querySelector('code').textContent);
-  });
+  }
+  $('log').addEventListener('click', handleReadingClick);
+  $('activityLog').addEventListener('click', handleReadingClick);
 
   const closeSettings = () => studioSettings.close();
   $('chatSearch').oninput = () => renderChats(window._chats || []);

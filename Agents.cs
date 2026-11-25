@@ -141,13 +141,25 @@ namespace XenoStudio
             return null;
         }
 
+        static bool noThinkingFlag;
+
         public override async Task<AgentResult> RunAsync(string prompt, string sessionId, string systemNote, Settings s,
                                                          IReadOnlyList<string> images, Action<string, string> onEvent, CancellationToken ct)
         {
             // exe can vanish for a while when another Claude Code instance updates itself — re-resolve and retry for ~20s
             for (int attempt = 1; ; attempt++)
             {
-                try { return await RunOnce(prompt, sessionId, systemNote, s, onEvent, ct); }
+                try
+                {
+                    var r = await RunOnce(prompt, sessionId, systemNote, s, onEvent, ct);
+                    // an older claude.exe (custom ClaudePath) doesn't know --thinking-display: drop it for this run of the app
+                    if (!r.Ok && !noThinkingFlag && s.ShowThinking && (r.Error ?? "").Contains("thinking-display"))
+                    {
+                        noThinkingFlag = true;
+                        r = await RunOnce(prompt, sessionId, systemNote, s, onEvent, ct);
+                    }
+                    return r;
+                }
                 catch (System.ComponentModel.Win32Exception ex) when (attempt < 6)
                 {
                     onEvent?.Invoke("tool", $"claude.exe failed to start ({ex.NativeErrorCode}: {ex.Message}) — exe: {ResolveExe(s)} — cwd: {s.PrimaryWorkDir} — retrying ({attempt}/5)…");
@@ -168,6 +180,8 @@ namespace XenoStudio
             else { r.SessionId = sessionId; args.Add("--resume"); args.Add(sessionId); }
             if (!string.IsNullOrWhiteSpace(s.ClaudeModel)) { args.Add("--model"); args.Add(s.ClaudeModel.Trim()); }
             if (s.ClaudeEffort?.Trim() is "low" or "medium" or "high" or "xhigh" or "max") { args.Add("--effort"); args.Add(s.ClaudeEffort.Trim()); }
+            // headless runs omit thinking text unless asked; the summaries feed the Activity panel
+            if (s.ShowThinking && !noThinkingFlag && !(s.ClaudeExtraArgs ?? "").Contains("--thinking-display")) { args.Add("--thinking-display"); args.Add("summarized"); }
             if (!string.IsNullOrWhiteSpace(s.ClaudeFallbackModel)) { args.Add("--fallback-model"); args.Add(s.ClaudeFallbackModel.Trim()); }
             if (s.ClaudeMaxTurns > 0) { args.Add("--max-turns"); args.Add(s.ClaudeMaxTurns.ToString()); }
 
@@ -221,7 +235,10 @@ namespace XenoStudio
                     case "stream_event":
                         var ev = j["event"];
                         var et = Str(ev?["type"]);
-                        if (et == "content_block_start" && Str(ev["content_block"]?["type"]) == "text")
+                        if (et == "content_block_start" && Str(ev["content_block"]?["type"]) == "thinking") onEvent("think", "\n\n");
+                        else if (et == "content_block_delta" && Str(ev["delta"]?["type"]) == "thinking_delta")
+                        { var th = Str(ev["delta"]["thinking"]); if (!string.IsNullOrEmpty(th)) onEvent("think", th); }
+                        else if (et == "content_block_start" && Str(ev["content_block"]?["type"]) == "text")
                         {
                             if (sawBlock && live.Length > 0) { live.Append("\n\n"); onEvent("delta", "\n\n"); }
                             sawBlock = true;
@@ -351,6 +368,7 @@ namespace XenoStudio
                     var d = j?["choices"]?[0]?["delta"];
                     var rc = Str(d?["reasoning_content"]);
                     if (!string.IsNullOrEmpty(rc) && a.ShowReasoning && !thinking) { thinking = true; r.Tools.Add("thinking…"); onEvent("tool", "thinking…"); }
+                    if (!string.IsNullOrEmpty(rc) && s.ShowThinking) onEvent("think", rc);
                     var c = Str(d?["content"]);
                     if (!string.IsNullOrEmpty(c)) { text.Append(c); onEvent("delta", c); }
                 }
@@ -431,6 +449,7 @@ namespace XenoStudio
             }
             if (!string.IsNullOrWhiteSpace(s.CodexModel)) { args.Add("-m"); args.Add(s.CodexModel.Trim()); }
             if (!string.IsNullOrWhiteSpace(s.CodexReasoning)) { args.Add("-c"); args.Add($"model_reasoning_effort=\"{s.CodexReasoning.Trim()}\""); }
+            if (s.ShowThinking && !(s.CodexExtraArgs ?? "").Contains("model_reasoning_summary")) { args.Add("-c"); args.Add("model_reasoning_summary=\"detailed\""); }
             args.AddRange(Util.CodexMcpOverrides((s.McpServers ?? new()).Where(m => m.Enabled && m.Codex)));
             args.AddRange(Util.SplitArgs(s.CodexExtraArgs));
             // -i belongs to whichever subcommand runs: `exec` for a new thread, `exec resume` when continuing one
@@ -469,6 +488,8 @@ namespace XenoStudio
                                 texts.Add(t.Trim()); onEvent("delta", t.Trim());
                             }
                         }
+                        else if (itype == "reasoning" && type == "item.completed")
+                        { var th = Str(it["text"]); if (!string.IsNullOrWhiteSpace(th)) onEvent("think", "\n\n" + th.Trim()); }
                         else if (type == "item.started" && itype == "command_execution")
                         { var tool = "$ " + Short(Str(it["command"]), 140); r.Tools.Add(tool); onEvent("tool", tool); }
                         else if (itype == "file_change")

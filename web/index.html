@@ -24,6 +24,12 @@
     <aside id="side">
       <div class="side-h">CHATS</div>
       <input id="chatSearch" type="search" placeholder="Search chats" aria-label="Search chats"><div id="chatList"></div>
+      <details id="activity" open>
+        <summary class="activity-heading"><span>Activity</span><span id="activityHeadline" role="status">Idle</span></summary>
+        <ul id="activityModels" aria-label="Assistant status"></ul>
+        <p id="activityQueue" role="status" hidden></p>
+        <div id="activityLog" role="region" aria-label="Reply activity" tabindex="0"></div>
+      </details>
     </aside>
 
     <section id="center">
@@ -115,6 +121,7 @@
 <script src="preview.js"></script>
 <script src="setup.js"></script>
 <script src="models.js"></script>
+<script src="activity.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

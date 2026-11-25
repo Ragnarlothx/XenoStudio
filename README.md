@@ -22,6 +22,8 @@ XenoStudio runs the official **Claude Code** and **Codex** command-line tools be
 they see each other's replies, can hand work to each other with `@mentions`, and can read, edit and run things in
 your work folders. Supported file-edit events appear as **change cards** you can open as before/after diffs, and a
 **code workspace** beside the chat lets you read, edit and save code without leaving the conversation.
+Open **Activity** under Chats to see which assistant is working, who is queued, and each reply's thinking summaries,
+tool calls, retries, and duration. **Settings → Chat → Show thinking in Activity** controls the summaries.
 
 - Reuses sign-ins detected by the official CLIs, or opens their browser sign-in. No API key is needed when using a supported account login.
 - Optional backup seats (DeepSeek, Grok, or a local model via Ollama / LM Studio) that answer when a main AI fails.

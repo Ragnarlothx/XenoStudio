@@ -24,6 +24,37 @@ namespace XenoStudio
         public List<FileEdit> Files { get; set; } = new();  // files an AI changed during this reply (change cards → diff view)
         public long Ts { get; set; } = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         public bool Error { get; set; }
+        // what the AI did while answering, in order: thinking summaries and tool calls (Activity panel)
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public List<TraceStep> Trace { get; set; }
+        public long DoneTs { get; set; }
+
+        const int MaxTrace = 120_000;   // characters kept per reply
+        public (TraceStep Step, string Chunk, bool Append)? AddTrace(string kind, string text)
+        {
+            Trace ??= new();
+            var last = Trace.LastOrDefault();
+            bool append = kind == "think" && last?.Kind == "think";
+            if (kind == "think" && !append) text = text.TrimStart('\n');
+            int remaining = MaxTrace - Trace.Sum(t => t.Text.Length);
+            if (remaining <= 0 || text.Length == 0) return null;
+            if (text.Length > remaining) text = text[..(remaining - 1)] + "…";
+            if (append)
+            {
+                last.Text += text;
+                return (last, text, true);
+            }
+            var step = new TraceStep { Kind = kind, Text = text };
+            Trace.Add(step);
+            return (step, text, false);
+        }
+    }
+
+    public class TraceStep
+    {
+        public string Kind { get; set; }        // think | tool | retry
+        public string Text { get; set; } = "";
+        public long Ts { get; set; } = DateTimeOffset.Now.ToUnixTimeMilliseconds();
     }
 
     public class AgentState
@@ -34,7 +65,7 @@ namespace XenoStudio
 
     public class Chat
     {
-        public string Id { get; set; } = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        public string Id { get; set; } = $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
         public string Title { get; set; } = "New chat";
         public long Updated { get; set; } = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         public List<Msg> Messages { get; set; } = new();
@@ -55,7 +86,8 @@ namespace XenoStudio
         readonly List<string> queue = new();
         bool busy;
         int aiTurns, alternate;
-        string running;
+        Chat turnChat;
+        Msg turnReply;
         EditTracker tracker;   // the running AI turn's file snapshots (null between turns)
         bool startupSent;
         List<string> mcpRefreshed = new();
@@ -89,7 +121,7 @@ namespace XenoStudio
             if (!webReady) { pendingSend = text; return; }
             if (busy) Stop();
             SaveChat(); chat = new Chat();
-            Post(new { type = "chat", chat, chats = ListChats() });
+            PostChat();
             UserSend(text, "auto");
         }
 
@@ -159,13 +191,20 @@ namespace XenoStudio
         void Post(object o)
         {
             var json = JsonSerializer.Serialize(o, J);
-            Dispatcher.BeginInvoke(() => { try { web.CoreWebView2?.PostWebMessageAsJson(json); } catch { } });
+            Dispatcher.BeginInvoke(() => SendToPage(json));
         }
+        void SendToPage(string json) { try { web.CoreWebView2?.PostWebMessageAsJson(json); } catch { } }
         void Notice(string text) => Post(new { type = "notice", text });
+        void PostChat()
+        {
+            Post(new { type = "chat", chat, chats = ListChats() });
+            PostStatus();
+        }
         void PostStatus()
         {
-            var st = agents.Keys.ToDictionary(k => k, k => running == k ? "running" : queue.Contains(k) ? "queued" : !Enabled(k) ? "off" : "idle");
-            Post(new { type = "status", agents = st, busy });
+            var reply = turnChat == chat ? turnReply : null;
+            var st = agents.Keys.ToDictionary(k => k, k => reply?.Who == k ? "running" : queue.Contains(k) ? "queued" : !Enabled(k) ? "off" : "idle");
+            Post(new { type = "status", agents = st, busy, running = reply?.Who, runningSince = reply?.Ts ?? 0, replyId = reply?.Id, chatId = chat.Id, queue = queue.ToList() });
         }
 
         void OnMessage(JsonNode n)
@@ -274,11 +313,12 @@ namespace XenoStudio
                     }
                     break;
                 case "stop": Stop(); break;
-                case "newChat": if (busy) Stop(); SaveChat(); chat = new Chat(); Post(new { type = "chat", chat, chats = ListChats() }); break;
+                case "newChat": if (busy) Stop(); SaveChat(); chat = new Chat(); PostChat(); break;
                 case "openChat":
                     if (busy) Stop(); SaveChat();
-                    chat = LoadChat((string)n["id"]) ?? new Chat();
-                    Post(new { type = "chat", chat, chats = ListChats() });
+                    var requestedId = (string)n["id"];
+                    chat = turnChat != null && turnChat.Id == requestedId ? turnChat : LoadChat(requestedId) ?? new Chat();
+                    PostChat();
                     break;
                 case "deleteChat":
                     var id = (string)n["id"];
@@ -286,7 +326,7 @@ namespace XenoStudio
                     try { var gone = LoadChat(id); if (gone != null) EditTracker.DeleteForMessages(gone.Messages.Select(m => m.Id)); } catch { }
                     try { File.Delete(Path.Combine(ChatDir, id + ".json")); } catch { }
                     try { var up = UploadPath(id); if (up != null && Directory.Exists(up)) Directory.Delete(up, true); } catch { }
-                    if (chat.Id == id) { if (busy) Stop(); chat = new Chat(); Post(new { type = "chat", chat, chats = ListChats() }); }
+                    if (chat.Id == id) { if (busy) Stop(); chat = new Chat(); PostChat(); }
                     else Post(new { type = "chats", chats = ListChats() });
                     break;
                 case "saveSettings":
@@ -791,7 +831,7 @@ namespace XenoStudio
             Post(new { type = "msg", msg = m });
         }
 
-        void Enqueue(string id) { if (Enabled(id) && !queue.Contains(id) && running != id) queue.Add(id); }
+        void Enqueue(string id) { if (Enabled(id) && !queue.Contains(id) && (turnChat != chat || turnReply?.Who != id)) queue.Add(id); }
 
         // ---------------------------------------------------------------- pictures
         static readonly Dictionary<string, string> ImageExt = new()
@@ -1070,10 +1110,12 @@ namespace XenoStudio
                     if (prompt == null) continue;
 
                     aiTurns++;
-                    running = id; PostStatus();
+                    var conversation = turnChat = chat;
                     var msg = new Msg { Who = id };
-                    chat.Messages.Add(msg);
-                    Post(new { type = "start", msg });
+                    turnReply = msg;
+                    conversation.Messages.Add(msg);
+                    PostStatus();
+                    Post(new { type = "start", msg, chatId = conversation.Id });
                     int seenUpTo = chat.Messages.Count;   // everything before this agent's own message has now been shown to it
 
                     tracker = new EditTracker(msg.Id, id, ResolveEditPath);   // snapshots files this AI edits during the reply
@@ -1087,13 +1129,13 @@ namespace XenoStudio
                         st.Cursor = Math.Max(0, chat.Messages.Count - 1 - S.ResumeHistory);
                         prompt = BuildPrompt(id, st, out var resumedImages) ?? prompt;
                         if (resumedImages.Count > 0) images = resumedImages;
-                        msg.Tools.Clear(); Post(new { type = "reset", id = msg.Id });
+                        msg.Tools.Clear(); Post(new { type = "reset", id = msg.Id }); TraceStep(msg, "retry", "session was lost; starting a fresh one with recent history");
                         r = await RunTurn(id, st, prompt, images, msg, token);
                     }
                     // Claude / Codex: retry plain failures (limits, network blips) before giving up or falling back
                     for (int attempt = 1; !r.Ok && !IsBackup(id) && attempt <= S.RetryOnError && !token.IsCancellationRequested; attempt++)
                     {
-                        Post(new { type = "tool", id = msg.Id, text = $"retry {attempt}/{S.RetryOnError} after error: {Short(r.Error)}" });
+                        { var rt = $"retry {attempt}/{S.RetryOnError} after error: {Short(r.Error)}"; Post(new { type = "tool", id = msg.Id, text = rt }); TraceStep(msg, "retry", rt); }
                         try { await Task.Delay(TimeSpan.FromSeconds(S.RetryDelaySec), token); } catch { break; }
                         msg.Tools.Clear(); Post(new { type = "reset", id = msg.Id });
                         r = await RunTurn(id, st, prompt, images, msg, token);
@@ -1123,13 +1165,14 @@ namespace XenoStudio
                         }
                     }
                     if (!chained && (isFallback || !IsBackup(id))) { fallbackFor = null; fallbackError = null; tried.Clear(); }
-                    running = null;
-                    chat.Updated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                    Post(new { type = "done", msg });
-                    SaveChat();
-                    if (S.AutoExport) ExportMarkdown(silent: true);
+                    turnReply = null;
+                    turnChat = null;
+                    conversation.Updated = msg.DoneTs = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                    Post(new { type = "done", msg, chatId = conversation.Id });
+                    SaveChat(conversation);
+                    if (conversation == chat && S.AutoExport) ExportMarkdown(silent: true);
 
-                    if (r.Ok && S.HandoffEnabled)
+                    if (r.Ok && !token.IsCancellationRequested && conversation == chat && S.HandoffEnabled)
                     {
                         foreach (Match m in Mention.Matches(r.Text ?? ""))
                         {
@@ -1144,13 +1187,25 @@ namespace XenoStudio
             catch (Exception ex) { AddMsg(new Msg { Who = "system", Text = "Error: " + ex.Message, Error = true }); }
             finally
             {
-                running = null; busy = false;
+                turnReply = null; turnChat = null; busy = false;
                 SaveChat();
                 Post(new { type = "chats", chats = ListChats() });
                 PostStatus();
                 // Xeno may have sent a new message while a stopped turn was still shutting down
                 if (queue.Count > 0 && !cts.Token.IsCancellationRequested) _ = Pump();
             }
+        }
+
+        // Keep trace mutations on the dispatcher alongside chat snapshots and saves.
+        void TraceStep(Msg msg, string kind, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (msg.DoneTs != 0 || kind == "think" && !S.ShowThinking) return;
+                if (msg.AddTrace(kind, text) is { } entry)
+                    SendToPage(JsonSerializer.Serialize(new { type = "trace", id = msg.Id, who = msg.Who, kind, text = entry.Chunk, ts = entry.Step.Ts, append = entry.Append }, J));
+            });
         }
 
         async Task<AgentResult> RunTurn(string id, AgentState st, string prompt, List<string> images, Msg msg, CancellationToken token)
@@ -1164,7 +1219,8 @@ namespace XenoStudio
             {
                 r = await Task.Run(() => agent.RunAsync(prompt, st.SessionId, SystemNote(id), S, images, (kind, text) =>
                 {
-                    if (kind == "tool") Post(new { type = "tool", id = msg.Id, text });
+                    if (kind == "tool") { Post(new { type = "tool", id = msg.Id, text }); TraceStep(msg, "tool", text); }
+                    else if (kind == "think") TraceStep(msg, "think", text);
                     else if (kind is "file" or "fileDone")
                     {
                         // an AI is about to change (or just changed) a file: snapshot it and tell the page so it can show "editing…"
@@ -1246,14 +1302,17 @@ namespace XenoStudio
             try { return JsonSerializer.Deserialize<Chat>(File.ReadAllText(Path.Combine(ChatDir, id + ".json")), J); } catch { return null; }
         }
 
-        void SaveChat()
+        void SaveChat(Chat conversation = null)
         {
-            if (chat.Messages.Count == 0) return;
+            conversation ??= chat;
+            if (conversation.Messages.Count == 0) return;
             try
             {
-                var path = Path.Combine(ChatDir, chat.Id + ".json");
+                var path = Path.Combine(ChatDir, conversation.Id + ".json");
+                // A stopped reply may finish after switching away from or deleting its chat.
+                if (conversation != chat && !File.Exists(path)) return;
                 var tmp = path + ".tmp";
-                File.WriteAllText(tmp, JsonSerializer.Serialize(chat, J));
+                File.WriteAllText(tmp, JsonSerializer.Serialize(conversation, J));
                 File.Move(tmp, path, true);
             }
             catch { }

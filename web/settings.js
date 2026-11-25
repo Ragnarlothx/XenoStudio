@@ -68,6 +68,7 @@ window.studioSettings = (() => {
     Chat: [
       ['ui.defaultTarget','Default recipient','select','auto,both,claude,codex'],
       ['ui.autoScroll','Follow new replies automatically','check'],
+      ['showThinking','Show thinking in Activity','check'],
       ['ui.renderMarkdown','Format messages as Markdown','check'],
       ['ui.confirmNew','Confirm before starting another chat','check'],
       ['ui.confirmDelete','Confirm chat deletion','check'],
@@ -266,7 +267,7 @@ window.studioSettings = (() => {
     }
     for(const specs of Object.values(groups)) for(const [key,title,type,min,max] of specs) if(type==='number'&&(!Number.isInteger(get(key))||get(key)<min||get(key)>max))throw Error(title+' must be between '+min+' and '+max+'.');
   }
-  function open() {draft={retryOnError:0,retryDelaySec:5,handoffEnabled:true,resumeHistory:30,deepSeekMaxTokens:0,grokEnabled:false,grokAutoReply:false,grokFallback:false,grokFallbackOn:'any',grokApiKey:'',grokBaseUrl:'https://api.x.ai/v1',grokModel:'',grokMaxTokens:0,grokShowReasoning:false,grokSystemExtra:'',...structuredClone(current)};draft.ui={...defaults,...draft.ui};servers=structuredClone(draft.mcpServers||[]);$('modal').classList.remove('hidden');$('settingsSearch').value='';$('settingsError').textContent='';render();send({cmd:'runtimeInfo'});send({cmd:'workspaceDrives'});$('bClose').focus();}
+  function open() {draft={retryOnError:0,retryDelaySec:5,handoffEnabled:true,resumeHistory:30,showThinking:true,deepSeekMaxTokens:0,grokEnabled:false,grokAutoReply:false,grokFallback:false,grokFallbackOn:'any',grokApiKey:'',grokBaseUrl:'https://api.x.ai/v1',grokModel:'',grokMaxTokens:0,grokShowReasoning:false,grokSystemExtra:'',...structuredClone(current)};draft.ui={...defaults,...draft.ui};servers=structuredClone(draft.mcpServers||[]);$('modal').classList.remove('hidden');$('settingsSearch').value='';$('settingsError').textContent='';render();send({cmd:'runtimeInfo'});send({cmd:'workspaceDrives'});$('bClose').focus();}
   function close() {$('modal').classList.add('hidden');$('input').focus();}
   function init() {
     $('modal').innerHTML='<div class="dlg studio-dlg" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><div class="dlg-h"><span id="settingsTitle">XenoStudio settings</span><button class="x" id="bClose" aria-label="Close settings">✕</button></div><input id="settingsSearch" type="search" placeholder="Find a setting across all categories" aria-label="Search settings"><div class="settings-layout"><nav id="settingsTabs" role="tablist" aria-label="Settings categories"></nav><div id="settingsPane" class="dlg-b"></div></div><div id="settingsError" role="alert"></div><div class="dlg-f"><button class="btn sec" id="bSetup">Setup tools and sign-in</button><button class="btn sec" id="bCancel">Cancel</button><button class="btn" id="bSave">Save settings</button></div></div>';
