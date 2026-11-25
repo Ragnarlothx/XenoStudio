@@ -78,7 +78,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Segoe", 8)
     canvas.setFillColor(GREY)
-    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.11")
+    canvas.drawString(0.75 * inch, 0.5 * inch, "XenoStudio Change Notes · v1.0.0 → v1.5.12")
     canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.setStrokeColor(LINE)
     canvas.line(0.75 * inch, 0.65 * inch, letter[0] - 0.75 * inch, 0.65 * inch)
@@ -93,7 +93,7 @@ story += [
     P("XenoStudio", s_title),
     P("Change Notes: every change from the fork to today", s_sub),
     Spacer(1, 4),
-    P("Covers v1.0.0 (2026-11-01) through v1.5.11 (2026-11-20)", s_meta),
+    P("Covers v1.0.0 (2026-11-01) through v1.5.12 (2026-11-25)", s_meta),
     Spacer(1, 10),
     P("Version summary", s_h1),
     table([
@@ -122,6 +122,7 @@ story += [
         ["1.5.9", "2026-11-12", "Codex", "Settings → Installation: pick tool paths and install missing components (with confirmation)."],
         ["1.5.10", "2026-11-20", "Claude", "Model and effort pickers in the chat window: live Codex model list, Claude effort levels, full reasoning ranges."],
         ["1.5.11", "2026-11-20", "Claude Desktop + Claude", "Bug fix: builds from source are self-contained again, so XenoStudio never asks for the .NET Desktop Runtime."],
+        ["1.5.12", "2026-11-25", "Claude + Codex", "Activity panel under Chats: live AI status, and each reply's thinking, tool calls and retries in order."],
     ], [0.6 * inch, 0.85 * inch, 1.05 * inch, W - 2.5 * inch]),
     Spacer(1, 8),
     P("Who did what: " + by("Claude") + " owns the C# backend (Settings.cs, Agents.cs, App/MainWindow) and did the web UI changes in 1.1.0 "
@@ -544,6 +545,37 @@ story += [
         ["If you hit it", "Install 1.5.11 (Settings → Runtime → Update XenoStudio, or the release zip), or rebuild from source; "
                           "nothing needs to be installed."],
     ], [1.3 * inch, W - 1.3 * inch], header=False),
+    P("v1.5.12 · 2026-11-25 · Activity panel · " + by("Claude") + " + " + by("Codex"), s_h1),
+    P("See what each AI is thinking and doing", s_h2),
+    *bullets([
+        "<b>Activity</b> section under Chats in the left sidebar shows which AI is working and for how long, and which AIs are queued.",
+        "Each AI reply in the current chat is an expandable card. It shows the thinking summaries, tool calls and retries in the order "
+        "they happened, with the reply's duration. Running replies scroll as they update.",
+        "<b>Settings → Chat → Show thinking in Activity</b> turns thinking summaries on or off (on by default). Saved summaries reappear "
+        "when it's turned back on.",
+        "Replies keep their activity trace in the chat file (up to 120,000 characters per reply). Older chats load unchanged.",
+    ]),
+    P("How the thinking is collected", s_h2),
+    table([
+        ["AI", "Source"],
+        ["Claude", "Runs with " + code("--thinking-display summarized") + ". Headless Claude Code leaves thinking text empty unless this "
+                   "flag is set. If an older custom claude.exe rejects the flag, XenoStudio retries once without it."],
+        ["Codex", "Runs with " + code("model_reasoning_summary=\"detailed\"") + ". Its reasoning items appear as steps. Codex provides "
+                  "short heading-style summaries rather than full thinking."],
+        ["DeepSeek / Grok", code("reasoning_content") + " from the API stream."],
+    ], [1.3 * inch, W - 1.3 * inch]),
+    P("Fixes", s_h2),
+    *bullets([
+        "A reply that's still finishing after you switch chats now stays with the chat that started it, instead of landing in the open chat (Codex).",
+        "Retries no longer erase the reply's history; they're recorded as steps.",
+        "New chat IDs include a unique suffix, so two chats created in the same second can't collide.",
+    ]),
+    P("Verified: real Claude and Codex turns through the new backend both delivered thinking steps; browser and Windows WebView2 tests "
+      "passed (Codex), including chat switching during a reply and the thinking setting; the self-contained 1.5.12 build installed "
+      "and started on .NET it bundles.", s_meta),
+    P("Files: " + code("Agents.cs") + ", " + code("MainWindow.xaml.cs") + " (trace, status, chat routing), " + code("Settings.cs")
+      + " (ShowThinking), " + code("web\\activity.js") + " (new), " + code("web\\app.js") + ", " + code("web\\index.html") + ", "
+      + code("web\\settings.js") + ", " + code("web\\style.css") + ", " + code("docs\\ACTIVITY-BRIDGE.md") + " (new).", s_meta),
     P("Files changed", s_h1),
     table([
         ["File", "Version", "What changed"],
@@ -597,6 +629,6 @@ story += [
 
 doc = SimpleDocTemplate(OUT, pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
                         topMargin=0.75 * inch, bottomMargin=0.85 * inch,
-                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.11", invariant=1)
+                        title="XenoStudio Change Notes", author="Claude and Codex for Xeno", subject="v1.0.0 to v1.5.12", invariant=1)
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print(OUT)
